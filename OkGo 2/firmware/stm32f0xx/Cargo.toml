@@ -1,0 +1,9 @@
+[package]
+name = "stm32f0xx"
+version = "0.1.0"
+authors = ["david"]
+
+[dependencies]
+cortex-m = "*"
+bare-metal = "*"
+vcell = "*"

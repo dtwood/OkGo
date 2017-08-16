@@ -3,7 +3,6 @@ extern crate gcc;
 fn main() {
     gcc::Config::new()
         .target("arm-none-eabi")
-        .file("src/legacy/adc.c")
         .file("src/legacy/hmac.c")
         .file("src/legacy/md5.c")
         .file("src/legacy/rfm95w.c")

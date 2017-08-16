@@ -4,6 +4,8 @@ version = "0.1.0"
 authors = ["david"]
 
 [dependencies]
+stm32f0xx = { path = "../stm32f0xx" }
+bare-metal = "*"
 
 [build-dependencies]
 gcc = "*"
