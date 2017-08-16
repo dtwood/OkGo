@@ -50,54 +50,6 @@ void ignition_init(ignition_state *state, ignition_radio_state *radio_state)
     adc_init();
 }
 
-/* Do beeping */
-void do_beep(ignition_state *state)
-{
-    uint32_t beep_period;
-    uint32_t beep_len;
-
-    if(state->fire_ch1 || state->fire_ch2 || state->fire_ch3 ||
-       state->fire_ch4)
-    {
-        beep_period = 200; /* fire beep period */
-        beep_len = 50; /* fire beep length */
-    }
-    else if(state->armed)
-    {
-        beep_period = 500; /* armed beep period */
-        beep_len = 250; /* armed beep length */
-    }
-    else
-    {
-        beep_period = 1000; /* disarmed beep period */
-        beep_len = 50; /* disarmed beep len */
-    }
-
-    if((get_millis() - state->beep_start) > beep_period)
-    {
-        /* Start a new beep with the high cycle */
-        state->beep_start = get_millis();
-        switch(state->beep_volume)
-        {
-            case 0:
-                ignition_buzzer_set(0); /* No beep */
-                break;
-            case 1:
-                ignition_buzzer_set(94); /* Low beep */
-                break;
-            case 3:
-                ignition_buzzer_set(255); /* Deafening beep */
-                break;
-            default:
-                ignition_buzzer_set(112); /* Medium beep */
-                break;
-        }
-    }
-    else if((get_millis() - state->beep_start) > beep_len)
-        /* Do the low cycle of the beep */
-        ignition_buzzer_set(0); /* off */
-}
-
 int c_main(void)
 {
     ignition_state state;

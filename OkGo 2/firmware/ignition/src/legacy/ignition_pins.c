@@ -58,15 +58,3 @@ void ignition_pins_init()
     dac_trigger_disable(CHANNEL_1);
     dac_enable(CHANNEL_1);
 }
-
-void ignition_buzzer_set(uint8_t value)
-{
-    /* Good values for this are:
-     * 0 - off
-     * 93 - low
-     * 112 - medium
-     * 255 - deafening
-     * The middle two might be variable or sensitive to temperature */
-    dac_load_data_buffer_single(value, RIGHT8, CHANNEL_1);
-}
-

@@ -13,8 +13,10 @@ extern crate stm32f0xx;
 extern crate hmac;
 extern crate md_5;
 
+pub mod beep;
 pub mod radio;
 pub mod ignition;
+pub mod io;
 
 extern "C" {
     fn c_main() -> i32;
