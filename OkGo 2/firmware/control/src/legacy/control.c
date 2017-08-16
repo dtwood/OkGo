@@ -229,7 +229,7 @@ void control_display_update(control_state *state,
 
 }
 
-int main(void)
+int c_main(void)
 {
     control_state state;
     control_radio_state radio_state;

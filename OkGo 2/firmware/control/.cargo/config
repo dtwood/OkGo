@@ -1,0 +1,7 @@
+[target.stm32f0]
+rustflags = [
+  "-C",
+  "link-arg=-Tstm32f071cbt.ld",
+  "-C",
+  "link-arg=-nostartfiles",
+]

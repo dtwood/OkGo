@@ -1,0 +1,9 @@
+[package]
+name = "firmware_common"
+version = "0.1.0"
+authors = ["david"]
+
+[dependencies]
+
+[build-dependencies]
+gcc = "*"

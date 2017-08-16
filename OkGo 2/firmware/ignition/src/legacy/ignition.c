@@ -98,7 +98,7 @@ void do_beep(ignition_state *state)
         ignition_buzzer_set(0); /* off */
 }
 
-int main(void)
+int c_main(void)
 {
     ignition_state state;
     ignition_radio_state radio_state;

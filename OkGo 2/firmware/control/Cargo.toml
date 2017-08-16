@@ -1,0 +1,16 @@
+[package]
+name = "control"
+version = "0.1.0"
+authors = [
+  "David Turner <cillian64@googlemail.com>",
+  "David Wood <devel@dtwood.uk>"
+]
+
+[dependencies]
+libopencm3-sys = { path = "../libopencm3-sys" }
+firmware_common = { path = "../common" }
+rlibc = "*"
+compiler_builtins = { git = "https://github.com/rust-lang-nursery/compiler-builtins", features = ["c"] }
+
+[build-dependencies]
+gcc = "*"
