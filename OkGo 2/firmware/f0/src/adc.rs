@@ -19,35 +19,41 @@ macro_rules! adc {
 #[no_mangle]
 pub unsafe extern "C" fn adc_init() {
     let cs = CriticalSection::new();
-    let adc = stm32f0xx::ADC.borrow(&cs);
+    init(&cs);
+}
 
-    adc.cr.write(|w| w.addis().set_bit());
-    while adc.cr.read().aden().bit_is_set() {
-        /* Wait for the ADC to be disabled */
+pub fn init(cs: &CriticalSection) {
+        let adc = stm32f0xx::ADC.borrow(&cs);
+
+        adc.cr.write(|w| w.addis().set_bit());
+        while adc.cr.read().aden().bit_is_set() {
+            /* Wait for the ADC to be disabled */
+        }
+
+        adc.cfgr2.reset();
+
+        adc.cr.write(|w| w.adcal().set_bit());
+        while adc.cr.read().adcal().bit_is_set() {
+            /* Wait for calibration to finish */
+        }
+
+            unsafe {
+        adc.cfgr1.write(|w| w
+            .cont().clear_bit()
+            .discen().set_bit()
+            .align().set_bit()
+            .res().bits(0)
+        );
+
+        adc.smpr.write(|w| w
+            .smpr().bits(6)
+        );
     }
 
-    adc.cfgr2.reset();
-
-    adc.cr.write(|w| w.adcal().set_bit());
-    while adc.cr.read().adcal().bit_is_set() {
-        /* Wait for calibration to finish */
-    }
-
-    adc.cfgr1.write(|w| w
-        .cont().clear_bit()
-        .discen().set_bit()
-        .align().set_bit()
-        .res().bits(0)
-    );
-
-    adc.smpr.write(|w| w
-        .smpr().bits(6)
-    );
-
-    adc.cr.write(|w| w.aden().set_bit());
-    while adc.cr.read().aden().bit_is_clear() {
-        /* Wait for the ADC to be enabled */
-    }
+        adc.cr.write(|w| w.aden().set_bit());
+        while adc.cr.read().aden().bit_is_clear() {
+            /* Wait for the ADC to be enabled */
+        }
 }
 
 /// Read an ADC value, blocking and returning result

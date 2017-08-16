@@ -25,5 +25,21 @@ extern "C" {
 
     /// Retrieve RSSI/SNR of last packet received
     pub fn rfm_getrssi() -> u8;
+}
 
+/// These frequency register values are found using:
+/// Freq = FRF * 32,000,000 / 2^19
+/// FRF = Freq / 32,000,000 * 2^19
+#[repr(u32)]
+pub enum Frf {
+    /// http://stakeholders.ofcom.org.uk/binaries/spectrum/spectrum-policy-area/spectrum-management/research-guidelines-tech-info/interface-requirements/IR_2030-june2014.pdf
+    /// Limit 25mW = 14dBm ERP, no channel bw limit
+    /// Either limit duty cycle to 1% or implement Directive 1999/5/EC or equiv.
+    /// Freq = 865,913,993 Hz -> FRF = 14187134.8613 */
+    Frf868 = 14187135,
+    /// http://www.digikey.com/en/articles/techzone/2011/may/unlicensed-915-mhz-band-fits-many-applications-and-allows-higher-transmit-power
+    /// Limit 4W = 36dBm, unsure of bw limit
+    /// DSSS required but not FHSS
+    /// Freq = 925,892,009 Hz -> FRF = 15169814.6755
+    Frf915 = 15169815,
 }

@@ -25,7 +25,8 @@ use bare_metal::CriticalSection;
 use firmware_common::rfm;
 use firmware_common::utils::{get_millis, delay_ms};
 
-static PACKET_DROP_DELAY: u32 = 0;
+/// Drop delay in ms
+const PACKET_DROP_DELAY: u32 = 5000;
 
 #[no_mangle]
 pub unsafe extern "C" fn main() -> i32 {
@@ -34,7 +35,7 @@ pub unsafe extern "C" fn main() -> i32 {
     let mut radio_state: radio::State = mem::uninitialized();
     let mut last_packet: u32 = 0;
 
-    ignition::ignition_init(&mut state, &mut radio_state);
+    ignition::init(&cs, &mut state, &mut radio_state);
 
     io::LED_GREEN.clear(&cs);
     io::LED_YELLOW.clear(&cs);
@@ -101,7 +102,7 @@ pub unsafe extern "C" fn main() -> i32 {
             io::FIRE_CH4.clear(&cs);
         }
 
-        beep::do_beep_rust(&cs, &mut state);
+        beep::do_beep(&cs, &mut state);
     }
 }
 

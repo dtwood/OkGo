@@ -13,7 +13,6 @@ use f0::spi::Spi;
 use f0::out::Output;
 
 /// Ignition radio state structure
-#[repr(C)]
 #[derive(Debug)]
 pub struct State {
     pub valid_rx: bool,
@@ -23,7 +22,7 @@ pub struct State {
     pub command: u8,
 }
 
-/* Convert raw ADC value to continuity ohms */
+/// Convert raw ADC value to continuity ohms
 fn adc_to_ohms(raw: u16) -> u8 {
     let mut millivolts = adc_to_millivolts(raw);
 
@@ -49,14 +48,6 @@ fn adc_to_ohms(raw: u16) -> u8 {
     }
 }
 
-/// Setup the SPI peripheral and call the RGM95W initialization procedure.
-/// Also initialise all the state variables to sensible defaults
-#[no_mangle]
-pub unsafe extern "C" fn ignition_radio_init(radio_state: *mut State) {
-    let cs = CriticalSection::new();
-    init(&cs, &mut *radio_state);
-}
-
 output!(RFM_NSS, A, 15);
 
 static RFM_SPI: Spi = Spi {
@@ -74,7 +65,7 @@ static RFM_SPI: Spi = Spi {
     },
 };
 
-fn init(cs: &CriticalSection, radio_state: &mut State) {
+pub fn init(cs: &CriticalSection, radio_state: &mut State) {
     // Clock SPI1 peripheral and setup GPIOs appropriately:
     // NSS, SCK, MOSI, RESET are outputs,
     // MISO is input.
@@ -103,15 +94,6 @@ fn init(cs: &CriticalSection, radio_state: &mut State) {
 }
 
 /// Transmit a packet to control based on the contents of state
-#[no_mangle]
-pub unsafe extern "C" fn ignition_radio_transmit(
-    state: *mut ignition::State,
-    radio_state: *const State,
-) {
-    let cs = CriticalSection::new();
-    transmit(&cs, &mut *state, &*radio_state)
-}
-
 pub fn transmit(cs: &CriticalSection, state: &mut ignition::State, radio_state: &State) {
     let mut buf = [0; 17];
 

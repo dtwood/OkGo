@@ -35,12 +35,6 @@ adc!(CONT_CH2, A, 7, 7);
 adc!(CONT_CH3, A, 6, 6);
 adc!(CONT_CH4, A, 5, 5);
 
-#[no_mangle]
-pub unsafe extern "C" fn ignition_pins_init() {
-    let cs = CriticalSection::new();
-    init(&cs);
-}
-
 pub fn init(cs: &CriticalSection) {
     /* Clock all GPIO peripherals */
     stm32f0xx::RCC.borrow(cs).ahbenr.write(|w| {
