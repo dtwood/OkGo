@@ -1,3 +1,9 @@
+use radio;
+
+extern "C" {
+    pub fn ignition_init(state: *mut State, radio_state: *mut radio::State);
+}
+
 #[repr(C)]
 pub struct State {
     pub armed: bool,

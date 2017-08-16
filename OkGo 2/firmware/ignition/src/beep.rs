@@ -9,7 +9,7 @@ pub unsafe extern "C" fn do_beep(state: *mut ignition::State) {
     do_beep_rust(&cs, &mut *state);
 }
 
-fn do_beep_rust(cs: &CriticalSection, state: &mut ignition::State) {
+pub fn do_beep_rust(cs: &CriticalSection, state: &mut ignition::State) {
     let beep_period: u32;
     let beep_len: u32;
 

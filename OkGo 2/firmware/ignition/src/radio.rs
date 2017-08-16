@@ -8,6 +8,7 @@ use bare_metal::CriticalSection;
 use stm32f0xx;
 use md_5::Md5;
 use hmac::{Hmac, Mac};
+use firmware_common::rfm;
 
 static ADC_CH_IGTN_BATT: u8 = 0;
 static ADC_CH_IGTN_CONT1: u8 = 8;
@@ -15,14 +16,29 @@ static ADC_CH_IGTN_CONT2: u8 = 7;
 static ADC_CH_IGTN_CONT3: u8 = 6;
 static ADC_CH_IGTN_CONT4: u8 = 5;
 
+extern "C" {
+    /// Setup the SPI peripheral and call the RFM95W initialisation procedure.
+    /// Also initialise all the above state variables to sensible defaults
+    pub fn ignition_radio_init(radio_state: *mut State);
+
+    /// Initiate packet reception and block until a packet is received
+    pub fn ignition_radio_receive_blocking(radio_state: *mut State);
+
+    /// Retrieve and parse a packet received in async receive
+    pub fn ignition_radio_receive_async(radio_state: *mut State);
+
+    /// Parse a received radio packet and fill in the received packet datastore
+    pub fn ignition_radio_parse_packet(radio_state: *mut State, buf: *mut u8, len: u8);
+}
+
 /// Ignition radio state structure
 #[repr(C)]
 pub struct State {
-    valid_rx: bool,
-    lost_link: bool,
+    pub valid_rx: bool,
+    pub lost_link: bool,
     /// RSSI of the incoming packet
-    packet_rssi: u8,
-    command: u8,
+    pub packet_rssi: u8,
+    pub command: u8,
 }
 
 /* Convert raw ADC value to continuity ohms */
@@ -55,13 +71,13 @@ fn adc_to_ohms(raw: u16) -> u8 {
 #[no_mangle]
 pub unsafe extern "C" fn ignition_radio_transmit(
     state: *mut ignition::State,
-    radio_state: *mut State
+    radio_state: *const State
 ) {
     let cs = CriticalSection::new();
-    transmit(&cs, &mut *state, &mut *radio_state)
+    transmit(&cs, &mut *state, &*radio_state)
 }
 
-fn transmit(cs: &CriticalSection, state: &mut ignition::State, radio_state: &mut State)
+pub fn transmit(cs: &CriticalSection, state: &mut ignition::State, radio_state: &State)
 {
     let adc = stm32f0xx::ADC.borrow(&cs);
 
@@ -96,7 +112,7 @@ fn transmit(cs: &CriticalSection, state: &mut ignition::State, radio_state: &mut
     buf[7..].clone_from_slice(mac.result().code());
 
     unsafe {
-        rfm_transmit(buf.as_ptr(), mem::size_of_val(&buf) as u8);
+        rfm::rfm_transmit(buf.as_ptr(), mem::size_of_val(&buf) as u8);
     }
 }
 
@@ -107,45 +123,4 @@ fn get_key() -> &'static [u8] {
 extern {
     static key: *const u8;
     static key_len: u8;
-
-    fn rfm_transmit(buf: *const u8, buf_len: u8);
 }
-
-// void ignition_radio_transmit(ignition_state *state,
-//                              ignition_radio_state *radio_state)
-// {
-//     uint8_t buf[17];
-//     uint32_t adc_val;
-//     uint8_t status;
-//
-//     buf[0] = radio_state->packet_rssi;
-//
-//     /* Read battery voltage */
-//     adc_val = adc_to_millivolts(adc_read(ADC_CH_IGTN_BATT));
-//     /* Pot divider of 10k over 3k3 s.t. V = Vbatt * 3.3/13.3
-//      * Vbatt = V * 13.3/3.3 = V * 133/33 */
-//     adc_val = adc_val * 133 / 33;
-//     if((adc_val / 10) % 10 >= 5) /* Round instead of truncate */
-//         buf[1] = adc_val / 100 + 1;
-//     else
-//         buf[1] = adc_val / 100;
-//
-//     /* Status byte */
-//     status = (state->armed << 4) |
-//              (state->fire_ch4 << 3) |
-//              (state->fire_ch3 << 2) |
-//              (state->fire_ch2 << 1) |
-//              (state->fire_ch1);
-//     buf[2] = status;
-//
-//     /* Channel continuities */
-//     buf[3] = adc_to_ohms(adc_read(ADC_CH_IGTN_CONT1));
-//     buf[4] = adc_to_ohms(adc_read(ADC_CH_IGTN_CONT2));
-//     buf[5] = adc_to_ohms(adc_read(ADC_CH_IGTN_CONT3));
-//     buf[6] = adc_to_ohms(adc_read(ADC_CH_IGTN_CONT4));
-//
-//     /* Generate message HMAC signature */
-//     hmac_md5_80(buf, 7, key, key_len, buf + 7);
-//
-//     rfm_transmit(buf, 17);
-// }

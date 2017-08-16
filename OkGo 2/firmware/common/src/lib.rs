@@ -7,3 +7,5 @@ extern crate f0;
 pub mod adc;
 pub mod md5;
 pub mod hmac_mod;
+pub mod rfm;
+pub mod utils;
