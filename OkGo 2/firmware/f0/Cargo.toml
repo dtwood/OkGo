@@ -1,0 +1,8 @@
+[package]
+name = "f0"
+version = "0.1.0"
+authors = ["David <devel@dtwood.uk>"]
+
+[dependencies]
+stm32f0xx = { path = "../stm32f0xx" }
+bare-metal = "*"

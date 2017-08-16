@@ -4,10 +4,9 @@ version = "0.1.0"
 authors = ["david"]
 
 [dependencies]
-stm32f0xx = { path = "../stm32f0xx" }
-bare-metal = "*"
 md-5 = "*"
 hmac = "*"
+f0 = { path = "../f0" }
 
 [build-dependencies]
 gcc = "*"
