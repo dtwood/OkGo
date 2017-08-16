@@ -3,3 +3,6 @@
 *.map
 *.o
 .gdb_history
+
+target
+Cargo.lock
