@@ -23,37 +23,33 @@ pub unsafe extern "C" fn adc_init() {
 }
 
 pub fn init(cs: &CriticalSection) {
-        let adc = stm32f0xx::ADC.borrow(&cs);
+    let adc = stm32f0xx::ADC.borrow(&cs);
 
-        adc.cr.write(|w| w.addis().set_bit());
-        while adc.cr.read().aden().bit_is_set() {
-            /* Wait for the ADC to be disabled */
-        }
+    adc.cr.write(|w| w.addis().set_bit());
+    while adc.cr.read().aden().bit_is_set() { /* Wait for the ADC to be disabled */ }
 
-        adc.cfgr2.reset();
+    adc.cfgr2.reset();
 
-        adc.cr.write(|w| w.adcal().set_bit());
-        while adc.cr.read().adcal().bit_is_set() {
-            /* Wait for calibration to finish */
-        }
+    adc.cr.write(|w| w.adcal().set_bit());
+    while adc.cr.read().adcal().bit_is_set() { /* Wait for calibration to finish */ }
 
-            unsafe {
-        adc.cfgr1.write(|w| w
-            .cont().clear_bit()
-            .discen().set_bit()
-            .align().set_bit()
-            .res().bits(0)
-        );
+    unsafe {
+        adc.cfgr1.write(|w| {
+            w.cont()
+                .clear_bit()
+                .discen()
+                .set_bit()
+                .align()
+                .set_bit()
+                .res()
+                .bits(0)
+        });
 
-        adc.smpr.write(|w| w
-            .smpr().bits(6)
-        );
+        adc.smpr.write(|w| w.smpr().bits(6));
     }
 
-        adc.cr.write(|w| w.aden().set_bit());
-        while adc.cr.read().aden().bit_is_clear() {
-            /* Wait for the ADC to be enabled */
-        }
+    adc.cr.write(|w| w.aden().set_bit());
+    while adc.cr.read().aden().bit_is_clear() { /* Wait for the ADC to be enabled */ }
 }
 
 /// Read an ADC value, blocking and returning result
@@ -68,16 +64,10 @@ pub unsafe extern "C" fn adc_read(channel: u8) -> u16 {
 fn read(adc: &stm32f0xx::ADC, channel: u8) -> u16 {
     assert!(channel <= 18);
 
-    adc.chselr.write(|w| unsafe { w
-        .bits(1 << channel)
-    });
+    adc.chselr.write(|w| unsafe { w.bits(1 << channel) });
 
-    adc.cr.write(|w| w
-        .adstart().set_bit()
-    );
-    while adc.isr.read().eoc().bit_is_clear() {
-        /* Wait for the conversion to finish */
-    }
+    adc.cr.write(|w| w.adstart().set_bit());
+    while adc.isr.read().eoc().bit_is_clear() { /* Wait for the conversion to finish */ }
 
     adc.dr.read().data().bits()
 }

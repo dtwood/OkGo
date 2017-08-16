@@ -20,8 +20,7 @@ pub struct State {
 /// Radio tx power in dBm
 const RADIO_POWER_DBM: u8 = 10;
 
-pub fn init(cs: &CriticalSection, state: &mut State, radio_state: &mut radio::State)
-{
+pub fn init(cs: &CriticalSection, state: &mut State, radio_state: &mut radio::State) {
     // Initialise local state variables
     state.armed = false;
     state.fire_ch1 = false;

@@ -9,10 +9,12 @@ use md_5::Md5;
 /// *hash
 #[no_mangle]
 pub unsafe extern "C" fn hmac_md5(
-    message: *const u8, message_len: u8,
-    key: *const u8, key_len: u8,
-    hash: *mut u8)
-{
+    message: *const u8,
+    message_len: u8,
+    key: *const u8,
+    key_len: u8,
+    hash: *mut u8,
+) {
     let mut mac = Hmac::<Md5>::new(slice::from_raw_parts(key, key_len.into()));
     mac.input(slice::from_raw_parts(message, message_len.into()));
 
@@ -25,11 +27,12 @@ pub unsafe extern "C" fn hmac_md5(
 /// *hash */
 #[no_mangle]
 pub unsafe extern "C" fn hmac_md5_80(
-    message: *const u8, message_len: u8,
-    key: *const u8, key_len: u8,
-    hash: *mut u8
-)
-{
+    message: *const u8,
+    message_len: u8,
+    key: *const u8,
+    key_len: u8,
+    hash: *mut u8,
+) {
     let mut mac = Hmac::<Md5>::new(slice::from_raw_parts(key, key_len.into()));
     mac.input(slice::from_raw_parts(message, message_len.into()));
 

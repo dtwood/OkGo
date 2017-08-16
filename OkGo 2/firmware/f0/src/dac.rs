@@ -20,7 +20,10 @@ pub struct Dac {
 
 impl Dac {
     pub fn set_right_u8(&self, cs: &CriticalSection, value: u8) {
-        stm32f0xx::DAC.borrow(cs).dhr8r1.write(|w| unsafe { w.dacc1dhr().bits(value) });
+        stm32f0xx::DAC
+            .borrow(cs)
+            .dhr8r1
+            .write(|w| unsafe { w.dacc1dhr().bits(value) });
     }
 
     pub fn setup(&self, cs: &CriticalSection) {
