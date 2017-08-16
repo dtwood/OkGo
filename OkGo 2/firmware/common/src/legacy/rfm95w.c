@@ -358,4 +358,3 @@ uint8_t rfm_getrssi(void)
     return rssi;
 #endif
 }
-

@@ -3,7 +3,6 @@ extern crate gcc;
 fn main() {
     gcc::Config::new()
         .target("arm-none-eabi")
-        .file("src/legacy/hmac.c")
         .file("src/legacy/rfm95w.c")
         .file("src/legacy/utils.c")
         .include("../libopencm3-sys/libopencm3/include")

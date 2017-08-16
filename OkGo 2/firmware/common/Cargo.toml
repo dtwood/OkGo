@@ -7,6 +7,7 @@ authors = ["david"]
 stm32f0xx = { path = "../stm32f0xx" }
 bare-metal = "*"
 md-5 = "*"
+hmac = "*"
 
 [build-dependencies]
 gcc = "*"
