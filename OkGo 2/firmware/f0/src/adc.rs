@@ -36,29 +36,21 @@ pub unsafe extern "C" fn adc_init() {
     }
 }
 
-// uint16_t adc_read(uint8_t channel)
-// {
-//     /* Set appropriate channel in CHSEL */
-//     adc_set_regular_sequence(ADC1, 1, &channel);
-//
-//     /* Start conversion and block until completion */
-//     adc_start_conversion_regular(ADC1);
-//     while(!adc_eoc(ADC1));
-//
-//     return adc_read_regular(ADC1);
-// }
-
 /// Read an ADC value, blocking and returning result
 #[no_mangle]
 pub unsafe extern "C" fn adc_read(channel: u8) -> u16 {
     let cs = CriticalSection::new();
     let adc = stm32f0xx::ADC.borrow(&cs);
+    read(adc, channel)
+}
 
+/// Read an ADC value, blocking and returning result
+pub fn read(adc: &stm32f0xx::ADC, channel: u8) -> u16 {
     assert!(channel <= 18);
 
-    adc.chselr.write(|w| w
+    adc.chselr.write(|w| unsafe { w
         .bits(1 << channel)
-    );
+    });
 
     adc.cr.write(|w| w
         .adstart().set_bit()
