@@ -5,6 +5,7 @@ fn main() {
         .target("arm-none-eabi")
         .file("src/legacy/rfm95w.c")
         .file("src/legacy/utils.c")
+        .file("src/legacy/key.c")
         .include("../libopencm3-sys/libopencm3/include")
         .include("src/legacy")
         .flag("-mthumb")

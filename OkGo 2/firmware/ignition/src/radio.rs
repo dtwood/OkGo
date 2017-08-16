@@ -1,5 +1,4 @@
 use core::mem;
-use core::slice;
 
 use ignition;
 use firmware_common::adc::adc_to_millivolts;
@@ -12,14 +11,6 @@ use stm32f0xx;
 use f0::gpio::{Gpio, Port};
 use f0::spi::Spi;
 use f0::out::Output;
-
-extern "C" {
-    /// Initiate packet reception and block until a packet is received
-    pub fn ignition_radio_receive_blocking(radio_state: *mut State);
-
-    /// Retrieve and parse a packet received in async receive
-    pub fn ignition_radio_receive_async(radio_state: *mut State);
-}
 
 /// Ignition radio state structure
 #[repr(C)]
@@ -157,15 +148,6 @@ pub fn transmit(cs: &CriticalSection, state: &mut ignition::State, radio_state: 
 }
 
 /// Parse a received radio packet and fill in the received packet datastore
-#[no_mangle]
-pub unsafe extern "C" fn ignition_radio_parse_packet(
-    radio_state: *mut State,
-    buf: *const u8,
-    len: u8,
-) {
-    parse_packet(&mut *radio_state, slice::from_raw_parts(buf, len.into()));
-}
-
 fn parse_packet(radio_state: &mut State, buf: &[u8]) {
     if buf.len() != 11 {
         radio_state.valid_rx = false;
@@ -181,4 +163,16 @@ fn parse_packet(radio_state: &mut State, buf: &[u8]) {
     } else {
         radio_state.valid_rx = false;
     }
+}
+
+/// Retrieve and parse a packet received in async receive
+pub fn receive_async(radio_state: &mut State) {
+    let mut rx_buf: [u8; 11] = unsafe { mem::uninitialized() };
+
+    if unsafe { rfm::rfm_packet_retrieve(rx_buf.as_mut_ptr(), 11) } {
+        parse_packet(radio_state, &rx_buf);
+    } else {
+        radio_state.valid_rx = false;
+    }
+    radio_state.packet_rssi = unsafe { rfm::rfm_getrssi() };
 }

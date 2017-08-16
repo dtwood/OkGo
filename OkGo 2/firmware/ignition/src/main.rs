@@ -43,7 +43,7 @@ pub unsafe extern "C" fn main() -> i32 {
 
     loop {
         if rfm::rfm_packet_waiting() {
-            radio::ignition_radio_receive_async(&mut radio_state);
+            radio::receive_async(&mut radio_state);
             if radio_state.valid_rx {
                 last_packet = get_millis();
                 state.armed = radio_state.command & (1 << 4) != 0;
