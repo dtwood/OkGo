@@ -19,9 +19,6 @@ extern "C" {
 
     /// Retrieve and parse a packet received in async receive
     pub fn ignition_radio_receive_async(radio_state: *mut State);
-
-    /// Parse a received radio packet and fill in the received packet datastore
-    pub fn ignition_radio_parse_packet(radio_state: *mut State, buf: *mut u8, len: u8);
 }
 
 /// Ignition radio state structure
@@ -150,7 +147,7 @@ pub fn transmit(cs: &CriticalSection, state: &mut ignition::State, radio_state: 
     buf[6] = adc_to_ohms(io::CONT_CH4.read(cs));
 
     /* Generate message HMAC signature */
-    let mut mac = Hmac::<Md5>::new(get_key());
+    let mut mac = Hmac::<Md5>::new(key::get_key());
     mac.input(&buf[0..7]);
     buf[7..].clone_from_slice(mac.result().code());
 
@@ -159,6 +156,29 @@ pub fn transmit(cs: &CriticalSection, state: &mut ignition::State, radio_state: 
     }
 }
 
-fn get_key() -> &'static [u8] {
-    unsafe { &slice::from_raw_parts(&key::key, key::key_len.into()) }
+/// Parse a received radio packet and fill in the received packet datastore
+#[no_mangle]
+pub unsafe extern "C" fn ignition_radio_parse_packet(
+    radio_state: *mut State,
+    buf: *const u8,
+    len: u8,
+) {
+    parse_packet(&mut *radio_state, slice::from_raw_parts(buf, len.into()));
+}
+
+fn parse_packet(radio_state: &mut State, buf: &[u8]) {
+    if buf.len() != 11 {
+        radio_state.valid_rx = false;
+        return;
+    }
+
+    radio_state.command = buf[0];
+
+    let mut mac = Hmac::<Md5>::new(key::get_key());
+    mac.input(&buf[0..1]);
+    if mac.verify(&buf[1..]) {
+        radio_state.valid_rx = true;
+    } else {
+        radio_state.valid_rx = false;
+    }
 }

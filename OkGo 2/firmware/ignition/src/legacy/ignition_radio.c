@@ -40,27 +40,3 @@ void ignition_radio_receive_async(ignition_radio_state *radio_state)
         radio_state->valid_rx = false;
     radio_state->packet_rssi = rfm_getrssi();
 }
-
-/* Parse a received radio packet and fill in the received packet datastore */
-void ignition_radio_parse_packet(ignition_radio_state *radio_state,
-                                 uint8_t *buf, uint8_t len)
-{
-    uint8_t hmac[10];
-
-    if(len != 11)
-    {
-        /* Invalid packet length! */
-        radio_state->valid_rx = false;
-        return;
-    }
-
-    radio_state->command = buf[0];
-
-    hmac_md5_80(buf, 1, key, key_len, hmac);
-
-    if(memcmp(hmac, buf + 1, 10) == 0)
-        radio_state->valid_rx = true; /* Good HMAC */
-    else
-        radio_state->valid_rx = false; /* Invalid HMAC */
-
-}
