@@ -6,14 +6,14 @@ use firmware_common::adc::adc_to_millivolts;
 use bare_metal::CriticalSection;
 use md_5::Md5;
 use hmac::{Hmac, Mac};
-use firmware_common::rfm;
+use firmware_common::{rfm, key};
 use io;
+use stm32f0xx;
+use f0::gpio::{Gpio, Port};
+use f0::spi::Spi;
+use f0::out::Output;
 
 extern "C" {
-    /// Setup the SPI peripheral and call the RFM95W initialisation procedure.
-    /// Also initialise all the above state variables to sensible defaults
-    pub fn ignition_radio_init(radio_state: *mut State);
-
     /// Initiate packet reception and block until a packet is received
     pub fn ignition_radio_receive_blocking(radio_state: *mut State);
 
@@ -26,6 +26,7 @@ extern "C" {
 
 /// Ignition radio state structure
 #[repr(C)]
+#[derive(Debug)]
 pub struct State {
     pub valid_rx: bool,
     pub lost_link: bool,
@@ -58,6 +59,59 @@ fn adc_to_ohms(raw: u16) -> u8 {
     } else {
         return ohms as u8;
     }
+}
+
+/// Setup the SPI peripheral and call the RGM95W initialization procedure.
+/// Also initialise all the state variables to sensible defaults
+#[no_mangle]
+pub unsafe extern "C" fn ignition_radio_init(radio_state: *mut State) {
+    let cs = CriticalSection::new();
+    init(&cs, &mut *radio_state);
+}
+
+output!(RFM_NSS, A, 15);
+
+static RFM_SPI: Spi = Spi {
+    sck: Gpio {
+        port: Port::B,
+        pin: 3,
+    },
+    miso: Gpio {
+        port: Port::B,
+        pin: 4,
+    },
+    mosi: Gpio {
+        port: Port::B,
+        pin: 5,
+    },
+};
+
+fn init(cs: &CriticalSection, radio_state: &mut State) {
+    // Clock SPI1 peripheral and setup GPIOs appropriately:
+    // NSS, SCK, MOSI, RESET are outputs,
+    // MISO is input.
+    // SPI setup is done in rfm95w.c
+    stm32f0xx::RCC
+        .borrow(cs)
+        .apb2enr
+        .write(|w| w.spi1en().set_bit());
+
+    // Make sure NSS doesn't blip when we enable it:
+    RFM_NSS.clear(cs);
+    RFM_NSS.setup(cs);
+    RFM_SPI.setup(cs);
+
+    // Run RFM95W initialization
+    unsafe {
+        rfm::rfm_initialise(
+            stm32f0xx::SPI1.get() as u32,
+            RFM_NSS.gpio.port as u32,
+            RFM_NSS.gpio.pin,
+        )
+    };
+
+    radio_state.valid_rx = false;
+    radio_state.lost_link = true;
 }
 
 /// Transmit a packet to control based on the contents of state
@@ -106,10 +160,5 @@ pub fn transmit(cs: &CriticalSection, state: &mut ignition::State, radio_state: 
 }
 
 fn get_key() -> &'static [u8] {
-    unsafe { &slice::from_raw_parts(key, key_len.into()) }
-}
-
-extern "C" {
-    static key: *const u8;
-    static key_len: u8;
+    unsafe { &slice::from_raw_parts(&key::key, key::key_len.into()) }
 }

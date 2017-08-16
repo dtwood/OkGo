@@ -7,6 +7,7 @@ extern crate libopencm3_sys;
 extern crate firmware_common;
 extern crate rlibc;
 extern crate compiler_builtins;
+#[macro_use]
 extern crate f0;
 extern crate bare_metal;
 extern crate stm32f0xx;

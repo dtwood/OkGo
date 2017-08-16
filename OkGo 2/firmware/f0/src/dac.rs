@@ -1,12 +1,21 @@
 use stm32f0xx;
-use gpio::Port;
+use gpio::{Gpio, Mode, PullUpDown};
 use bare_metal::CriticalSection;
 
-/// Read an ADC value, blocking and returning result
+#[macro_export]
+macro_rules! dac {
+    ($id: ident, $port: ident, $pin: expr) => {
+        pub static $id: Dac = Dac {
+            gpio: Gpio {
+                port: Port::$port,
+                pin: $pin,
+            },
+        };
+    }
+}
 
 pub struct Dac {
-    pub port: Port,
-    pub pin: u32,
+    pub gpio: Gpio,
 }
 
 impl Dac {
@@ -15,12 +24,6 @@ impl Dac {
     }
 
     pub fn setup(&self, cs: &CriticalSection) {
-        match self.port {
-            Port::A => {
-                stm32f0xx::GPIOA.borrow(cs).moder.modify(|r, w| unsafe { w.bits(r.bits() | (0b11 << (self.pin * 2)))});
-                stm32f0xx::GPIOA.borrow(cs).pupdr.modify(|r, w| unsafe { w.bits(r.bits() & !(0b11 << (self.pin * 2)))});
-            }
-            _ => panic!(),
-        }
+        self.gpio.setup(cs, Mode::Analog, PullUpDown::None);
     }
 }

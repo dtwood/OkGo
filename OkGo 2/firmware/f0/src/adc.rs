@@ -1,6 +1,19 @@
 use stm32f0xx;
 use bare_metal::CriticalSection;
-use gpio::Port;
+use gpio::{Gpio, Mode, PullUpDown};
+
+#[macro_export]
+macro_rules! adc {
+    ($id: ident, $port: ident, $pin: expr, $channel: expr) => {
+        pub static $id: Adc = Adc {
+            gpio: Gpio {
+                port: Port::$port,
+                pin: $pin,
+            },
+            channel: $channel,
+        };
+    }
+}
 
 /// General purpose ADC initialisation and calibration
 #[no_mangle]
@@ -64,8 +77,7 @@ fn read(adc: &stm32f0xx::ADC, channel: u8) -> u16 {
 }
 
 pub struct Adc {
-    pub port: Port,
-    pub pin: u32,
+    pub gpio: Gpio,
     pub channel: u8,
 }
 
@@ -75,12 +87,6 @@ impl Adc {
     }
 
     pub fn setup(&self, cs: &CriticalSection) {
-        match self.port {
-            Port::A => {
-                stm32f0xx::GPIOA.borrow(cs).moder.modify(|r, w| unsafe { w.bits(r.bits() | (0b11 << (self.pin * 2)))});
-                stm32f0xx::GPIOA.borrow(cs).pupdr.modify(|r, w| unsafe { w.bits(r.bits() & !(0b11 << (self.pin * 2)))});
-            }
-            _ => panic!(),
-        }
+        self.gpio.setup(cs, Mode::Analog, PullUpDown::None)
     }
 }
