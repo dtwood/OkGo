@@ -45,13 +45,13 @@ pub unsafe extern "C" fn main() -> i32 {
             radio::ignition_radio_receive_async(&mut radio_state);
             if radio_state.valid_rx {
                 last_packet = get_millis();
-                state.armed = radio_state.command & (1<<4) != 0;
+                state.armed = radio_state.command & (1 << 4) != 0;
                 state.beep_volume = (radio_state.command >> 5) & 0x07;
                 if state.armed {
-                    state.fire_ch1 = radio_state.command & (1<<0) != 0;
-                    state.fire_ch2 = radio_state.command & (1<<1) != 0;
-                    state.fire_ch3 = radio_state.command & (1<<2) != 0;
-                    state.fire_ch4 = radio_state.command & (1<<3) != 0;
+                    state.fire_ch1 = radio_state.command & (1 << 0) != 0;
+                    state.fire_ch2 = radio_state.command & (1 << 1) != 0;
+                    state.fire_ch3 = radio_state.command & (1 << 2) != 0;
+                    state.fire_ch4 = radio_state.command & (1 << 3) != 0;
                 } else {
                     state.fire_ch1 = false;
                     state.fire_ch2 = false;

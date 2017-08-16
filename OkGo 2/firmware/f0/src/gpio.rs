@@ -64,8 +64,8 @@ impl Output {
     pub fn setup(&self, cs: &CriticalSection) {
         match self.port {
             Port::A => {
-                stm32f0xx::GPIOA.borrow(cs).moder.modify(|r, w| unsafe { w.bits(r.bits() | (1 << self.pin))});
-                stm32f0xx::GPIOA.borrow(cs).pupdr.modify(|r, w| unsafe { w.bits(r.bits() & !(1 << self.pin))});
+                stm32f0xx::GPIOA.borrow(cs).moder.modify(|r, w| unsafe { w.bits(r.bits() & !(0b11 << (self.pin * 2)) | (0b01 << (self.pin * 2)))});
+                stm32f0xx::GPIOA.borrow(cs).pupdr.modify(|r, w| unsafe { w.bits(r.bits() & !(0b11 << (self.pin * 2)))});
             }
             _ => panic!(),
         }

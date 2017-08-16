@@ -3,18 +3,11 @@ use core::slice;
 
 use ignition;
 use firmware_common::adc::adc_to_millivolts;
-use f0::adc;
 use bare_metal::CriticalSection;
-use stm32f0xx;
 use md_5::Md5;
 use hmac::{Hmac, Mac};
 use firmware_common::rfm;
-
-static ADC_CH_IGTN_BATT: u8 = 0;
-static ADC_CH_IGTN_CONT1: u8 = 8;
-static ADC_CH_IGTN_CONT2: u8 = 7;
-static ADC_CH_IGTN_CONT3: u8 = 6;
-static ADC_CH_IGTN_CONT4: u8 = 5;
+use io;
 
 extern "C" {
     /// Setup the SPI peripheral and call the RFM95W initialisation procedure.
@@ -71,40 +64,36 @@ fn adc_to_ohms(raw: u16) -> u8 {
 #[no_mangle]
 pub unsafe extern "C" fn ignition_radio_transmit(
     state: *mut ignition::State,
-    radio_state: *const State
+    radio_state: *const State,
 ) {
     let cs = CriticalSection::new();
     transmit(&cs, &mut *state, &*radio_state)
 }
 
-pub fn transmit(cs: &CriticalSection, state: &mut ignition::State, radio_state: &State)
-{
-    let adc = stm32f0xx::ADC.borrow(&cs);
-
+pub fn transmit(cs: &CriticalSection, state: &mut ignition::State, radio_state: &State) {
     let mut buf = [0; 17];
 
     buf[0] = radio_state.packet_rssi;
 
-    let mut adc_val: u32 = adc_to_millivolts(adc::read(adc, ADC_CH_IGTN_BATT));
+    let mut adc_val: u32 = adc_to_millivolts(io::BATT_MON.read(cs));
 
     adc_val = adc_val * 133 / 33;
-    if (adc_val / 10) % 10 >= 5 /* Round instead of truncate */
+    if (adc_val / 10) % 10 >= 5
+    /* Round instead of truncate */
     {
         buf[1] = (adc_val / 100 + 1) as u8;
     } else {
         buf[1] = (adc_val / 100) as u8;
     }
-    let status: u8 = ((state.armed as u8) << 4) |
-             ((state.fire_ch4 as u8) << 3) |
-             ((state.fire_ch3 as u8) << 2) |
-             ((state.fire_ch2 as u8) << 1) |
-             (state.fire_ch1 as u8);
+    let status: u8 = ((state.armed as u8) << 4) | ((state.fire_ch4 as u8) << 3) |
+        ((state.fire_ch3 as u8) << 2) | ((state.fire_ch2 as u8) << 1) |
+        (state.fire_ch1 as u8);
     buf[2] = status;
 
-    buf[3] = adc_to_ohms(adc::read(adc, ADC_CH_IGTN_CONT1));
-    buf[4] = adc_to_ohms(adc::read(adc, ADC_CH_IGTN_CONT2));
-    buf[5] = adc_to_ohms(adc::read(adc, ADC_CH_IGTN_CONT3));
-    buf[6] = adc_to_ohms(adc::read(adc, ADC_CH_IGTN_CONT4));
+    buf[3] = adc_to_ohms(io::CONT_CH1.read(cs));
+    buf[4] = adc_to_ohms(io::CONT_CH2.read(cs));
+    buf[5] = adc_to_ohms(io::CONT_CH3.read(cs));
+    buf[6] = adc_to_ohms(io::CONT_CH4.read(cs));
 
     /* Generate message HMAC signature */
     let mut mac = Hmac::<Md5>::new(get_key());
@@ -120,7 +109,7 @@ fn get_key() -> &'static [u8] {
     unsafe { &slice::from_raw_parts(key, key_len.into()) }
 }
 
-extern {
+extern "C" {
     static key: *const u8;
     static key_len: u8;
 }
