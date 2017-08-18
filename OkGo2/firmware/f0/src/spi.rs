@@ -1,4 +1,4 @@
-use gpio::{Gpio, Mode, PullUpDown, AlternateFunction};
+use gpio::{AlternateFunction, Gpio, Mode, PullUpDown};
 use bare_metal::CriticalSection;
 
 #[derive(Debug)]

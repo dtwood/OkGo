@@ -119,108 +119,84 @@ impl Gpio {
         let low = self.pin < 16;
 
         match self.port {
-            Port::A => {
-                if low {
-                    stm32f0xx::GPIOA.borrow(cs).afrl.modify(|r, w| unsafe {
-                        w.bits(
-                            r.bits() & !(0b1111 << (self.pin * 4)) |
-                                ((af as u32) << (self.pin * 4)),
-                        )
-                    });
-                } else {
-                    stm32f0xx::GPIOA.borrow(cs).afrh.modify(|r, w| unsafe {
-                        w.bits(
-                            r.bits() & !(0b1111 << (self.pin * 4)) |
-                                ((af as u32) << (self.pin * 4)),
-                        )
-                    });
-                }
-            }
-            Port::B => {
-                if low {
-                    stm32f0xx::GPIOB.borrow(cs).afrl.modify(|r, w| unsafe {
-                        w.bits(
-                            r.bits() & !(0b1111 << (self.pin * 4)) |
-                                ((af as u32) << (self.pin * 4)),
-                        )
-                    });
-                } else {
-                    stm32f0xx::GPIOB.borrow(cs).afrh.modify(|r, w| unsafe {
-                        w.bits(
-                            r.bits() & !(0b1111 << (self.pin * 4)) |
-                                ((af as u32) << (self.pin * 4)),
-                        )
-                    });
-                }
-            }
-            Port::C => {
-                if low {
-                    stm32f0xx::GPIOC.borrow(cs).afrl.modify(|r, w| unsafe {
-                        w.bits(
-                            r.bits() & !(0b1111 << (self.pin * 4)) |
-                                ((af as u32) << (self.pin * 4)),
-                        )
-                    });
-                } else {
-                    stm32f0xx::GPIOC.borrow(cs).afrh.modify(|r, w| unsafe {
-                        w.bits(
-                            r.bits() & !(0b1111 << (self.pin * 4)) |
-                                ((af as u32) << (self.pin * 4)),
-                        )
-                    });
-                }
-            }
-            Port::D => {
-                if low {
-                    stm32f0xx::GPIOD.borrow(cs).afrl.modify(|r, w| unsafe {
-                        w.bits(
-                            r.bits() & !(0b1111 << (self.pin * 4)) |
-                                ((af as u32) << (self.pin * 4)),
-                        )
-                    });
-                } else {
-                    stm32f0xx::GPIOD.borrow(cs).afrh.modify(|r, w| unsafe {
-                        w.bits(
-                            r.bits() & !(0b1111 << (self.pin * 4)) |
-                                ((af as u32) << (self.pin * 4)),
-                        )
-                    });
-                }
-            }
-            Port::E => {
-                if low {
-                    stm32f0xx::GPIOE.borrow(cs).afrl.modify(|r, w| unsafe {
-                        w.bits(
-                            r.bits() & !(0b1111 << (self.pin * 4)) |
-                                ((af as u32) << (self.pin * 4)),
-                        )
-                    });
-                } else {
-                    stm32f0xx::GPIOE.borrow(cs).afrh.modify(|r, w| unsafe {
-                        w.bits(
-                            r.bits() & !(0b1111 << (self.pin * 4)) |
-                                ((af as u32) << (self.pin * 4)),
-                        )
-                    });
-                }
-            }
-            Port::F => {
-                if low {
-                    stm32f0xx::GPIOF.borrow(cs).afrl.modify(|r, w| unsafe {
-                        w.bits(
-                            r.bits() & !(0b1111 << (self.pin * 4)) |
-                                ((af as u32) << (self.pin * 4)),
-                        )
-                    });
-                } else {
-                    stm32f0xx::GPIOF.borrow(cs).afrh.modify(|r, w| unsafe {
-                        w.bits(
-                            r.bits() & !(0b1111 << (self.pin * 4)) |
-                                ((af as u32) << (self.pin * 4)),
-                        )
-                    });
-                }
-            }
+            Port::A => if low {
+                stm32f0xx::GPIOA.borrow(cs).afrl.modify(|r, w| unsafe {
+                    w.bits(
+                        r.bits() & !(0b1111 << (self.pin * 4)) | ((af as u32) << (self.pin * 4)),
+                    )
+                });
+            } else {
+                stm32f0xx::GPIOA.borrow(cs).afrh.modify(|r, w| unsafe {
+                    w.bits(
+                        r.bits() & !(0b1111 << (self.pin * 4)) | ((af as u32) << (self.pin * 4)),
+                    )
+                });
+            },
+            Port::B => if low {
+                stm32f0xx::GPIOB.borrow(cs).afrl.modify(|r, w| unsafe {
+                    w.bits(
+                        r.bits() & !(0b1111 << (self.pin * 4)) | ((af as u32) << (self.pin * 4)),
+                    )
+                });
+            } else {
+                stm32f0xx::GPIOB.borrow(cs).afrh.modify(|r, w| unsafe {
+                    w.bits(
+                        r.bits() & !(0b1111 << (self.pin * 4)) | ((af as u32) << (self.pin * 4)),
+                    )
+                });
+            },
+            Port::C => if low {
+                stm32f0xx::GPIOC.borrow(cs).afrl.modify(|r, w| unsafe {
+                    w.bits(
+                        r.bits() & !(0b1111 << (self.pin * 4)) | ((af as u32) << (self.pin * 4)),
+                    )
+                });
+            } else {
+                stm32f0xx::GPIOC.borrow(cs).afrh.modify(|r, w| unsafe {
+                    w.bits(
+                        r.bits() & !(0b1111 << (self.pin * 4)) | ((af as u32) << (self.pin * 4)),
+                    )
+                });
+            },
+            Port::D => if low {
+                stm32f0xx::GPIOD.borrow(cs).afrl.modify(|r, w| unsafe {
+                    w.bits(
+                        r.bits() & !(0b1111 << (self.pin * 4)) | ((af as u32) << (self.pin * 4)),
+                    )
+                });
+            } else {
+                stm32f0xx::GPIOD.borrow(cs).afrh.modify(|r, w| unsafe {
+                    w.bits(
+                        r.bits() & !(0b1111 << (self.pin * 4)) | ((af as u32) << (self.pin * 4)),
+                    )
+                });
+            },
+            Port::E => if low {
+                stm32f0xx::GPIOE.borrow(cs).afrl.modify(|r, w| unsafe {
+                    w.bits(
+                        r.bits() & !(0b1111 << (self.pin * 4)) | ((af as u32) << (self.pin * 4)),
+                    )
+                });
+            } else {
+                stm32f0xx::GPIOE.borrow(cs).afrh.modify(|r, w| unsafe {
+                    w.bits(
+                        r.bits() & !(0b1111 << (self.pin * 4)) | ((af as u32) << (self.pin * 4)),
+                    )
+                });
+            },
+            Port::F => if low {
+                stm32f0xx::GPIOF.borrow(cs).afrl.modify(|r, w| unsafe {
+                    w.bits(
+                        r.bits() & !(0b1111 << (self.pin * 4)) | ((af as u32) << (self.pin * 4)),
+                    )
+                });
+            } else {
+                stm32f0xx::GPIOF.borrow(cs).afrh.modify(|r, w| unsafe {
+                    w.bits(
+                        r.bits() & !(0b1111 << (self.pin * 4)) | ((af as u32) << (self.pin * 4)),
+                    )
+                });
+            },
         }
     }
 }

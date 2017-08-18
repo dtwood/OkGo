@@ -5,7 +5,7 @@ use firmware_common::adc::adc_to_millivolts;
 use bare_metal::CriticalSection;
 use md_5::Md5;
 use hmac::{Hmac, Mac};
-use firmware_common::{rfm, key};
+use firmware_common::{key, rfm};
 use io;
 use stm32f0xx;
 use f0::gpio::{Gpio, Port};

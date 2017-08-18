@@ -23,7 +23,7 @@ use core::mem;
 
 use bare_metal::CriticalSection;
 use firmware_common::rfm;
-use firmware_common::utils::{get_millis, delay_ms};
+use firmware_common::utils::{delay_ms, get_millis};
 
 /// Drop delay in ms
 const PACKET_DROP_DELAY: u32 = 5000;

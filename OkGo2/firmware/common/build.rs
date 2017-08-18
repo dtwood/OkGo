@@ -1,7 +1,7 @@
 extern crate gcc;
 
 fn main() {
-    gcc::Config::new()
+    gcc::Build::new()
         .target("arm-none-eabi")
         .file("src/legacy/rfm95w.c")
         .file("src/legacy/utils.c")
