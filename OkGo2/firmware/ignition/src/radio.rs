@@ -11,16 +11,13 @@ use stm32f0xx;
 use f0::gpio::{Gpio, Port};
 use f0::spi::Spi;
 use f0::out::Output;
+use nb;
 
-/// Ignition radio state structure
-#[derive(Debug)]
-pub struct State {
-    pub valid_rx: bool,
-    pub lost_link: bool,
-    /// RSSI of the incoming packet
-    pub packet_rssi: u8,
-    pub command: u8,
-}
+const REQ_PACKET_LEN: usize = 11;
+const RSP_PACKET_LEN: usize = 17;
+
+/// Radio tx power in dBm
+const RADIO_POWER_DBM: u8 = 10;
 
 /// Convert raw ADC value to continuity ohms
 fn adc_to_ohms(raw: u16) -> u8 {
@@ -65,7 +62,7 @@ static RFM_SPI: Spi = Spi {
     },
 };
 
-pub fn init(cs: &CriticalSection, radio_state: &mut State) {
+pub fn init(cs: &CriticalSection) {
     // Clock SPI1 peripheral and setup GPIOs appropriately:
     // NSS, SCK, MOSI, RESET are outputs,
     // MISO is input.
@@ -86,18 +83,17 @@ pub fn init(cs: &CriticalSection, radio_state: &mut State) {
             stm32f0xx::SPI1.get() as u32,
             RFM_NSS.gpio.port as u32,
             RFM_NSS.gpio.pin,
-        )
-    };
-
-    radio_state.valid_rx = false;
-    radio_state.lost_link = true;
+        );
+        rfm::rfm_setfreq(rfm::Frf::Frf868 as u32);
+        rfm::rfm_setpower(RADIO_POWER_DBM);
+    }
 }
 
 /// Transmit a packet to control based on the contents of state
-pub fn transmit(cs: &CriticalSection, state: &mut ignition::State, radio_state: &State) {
-    let mut buf = [0; 17];
+pub fn transmit(cs: &CriticalSection, state: &ignition::State) {
+    let mut buf = [0; RSP_PACKET_LEN];
 
-    buf[0] = radio_state.packet_rssi;
+    buf[0] = state.packet_rssi;
 
     let mut adc_val: u32 = adc_to_millivolts(io::BATT_MON.read(cs));
 
@@ -121,40 +117,74 @@ pub fn transmit(cs: &CriticalSection, state: &mut ignition::State, radio_state: 
 
     /* Generate message HMAC signature */
     let mut mac = Hmac::<Md5>::new(key::get_key());
-    mac.input(&buf[0..7]);
-    buf[7..].clone_from_slice(mac.result().code());
+    mac.input(&buf[0..(RSP_PACKET_LEN - 10)]);
+    buf[(RSP_PACKET_LEN - 10)..].clone_from_slice(mac.result().code());
 
     unsafe {
-        rfm::rfm_transmit(buf.as_ptr(), mem::size_of_val(&buf) as u8);
+        rfm::rfm_transmit(buf.as_ptr(), RSP_PACKET_LEN as u8);
     }
 }
 
-/// Parse a received radio packet and fill in the received packet datastore
-fn parse_packet(radio_state: &mut State, buf: &[u8]) {
-    if buf.len() != 11 {
-        radio_state.valid_rx = false;
-        return;
+pub fn make_ready() {
+    unsafe {
+        rfm::rfm_receive_async(REQ_PACKET_LEN as u8);
     }
+}
 
-    radio_state.command = buf[0];
-
+fn parse_packet(buf: [u8; REQ_PACKET_LEN]) -> Result<ignition::State, ReceiveError> {
     let mut mac = Hmac::<Md5>::new(key::get_key());
-    mac.input(&buf[0..1]);
-    if mac.verify(&buf[1..]) {
-        radio_state.valid_rx = true;
-    } else {
-        radio_state.valid_rx = false;
+    mac.input(&buf[0..(REQ_PACKET_LEN - 10)]);
+    if !mac.verify(&buf[(REQ_PACKET_LEN - 10)..]) {
+        return Err(ReceiveError::InvalidHash);
     }
+
+    let command = buf[0];
+
+    let armed = command & (1 << 4) != 0;
+    let beep_volume = (command >> 5) & 0x07;
+    let rssi = unsafe { rfm::rfm_getrssi() };
+
+    Ok(if armed {
+        ignition::State {
+            beep_volume: beep_volume,
+            beep_start: 0,
+            packet_rssi: rssi,
+            armed: armed,
+            fire_ch1: command & (1 << 0) != 0,
+            fire_ch2: command & (1 << 1) != 0,
+            fire_ch3: command & (1 << 2) != 0,
+            fire_ch4: command & (1 << 3) != 0,
+        }
+    } else {
+        ignition::State {
+            beep_volume: beep_volume,
+            beep_start: 0,
+            packet_rssi: rssi,
+            armed: armed,
+            fire_ch1: false,
+            fire_ch2: false,
+            fire_ch3: false,
+            fire_ch4: false,
+        }
+    })
+}
+
+pub enum ReceiveError {
+    ReceiveError,
+    InvalidHash,
 }
 
 /// Retrieve and parse a packet received in async receive
-pub fn receive_async(radio_state: &mut State) {
-    let mut rx_buf: [u8; 11] = unsafe { mem::uninitialized() };
+pub fn receive_async() -> nb::Result<ignition::State, ReceiveError> {
+    if unsafe { rfm::rfm_packet_waiting() } {
+        let mut rx_buf: [u8; REQ_PACKET_LEN] = unsafe { mem::uninitialized() };
 
-    if unsafe { rfm::rfm_packet_retrieve(rx_buf.as_mut_ptr(), 11) } {
-        parse_packet(radio_state, &rx_buf);
+        if unsafe { rfm::rfm_packet_retrieve(rx_buf.as_mut_ptr(), REQ_PACKET_LEN as u8) } {
+            parse_packet(rx_buf).map_err(|e| nb::Error::Other(e))
+        } else {
+            Err(nb::Error::Other(ReceiveError::ReceiveError))
+        }
     } else {
-        radio_state.valid_rx = false;
+        Err(nb::Error::WouldBlock)
     }
-    radio_state.packet_rssi = unsafe { rfm::rfm_getrssi() };
 }

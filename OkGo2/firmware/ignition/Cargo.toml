@@ -16,6 +16,7 @@ bare-metal = "*"
 stm32f0xx = { path = "../stm32f0xx" }
 hmac = "*"
 md-5 = "*"
+nb = { git = "https://github.com/japaric/nb.git" }
 
 [build-dependencies]
 gcc = "*"
