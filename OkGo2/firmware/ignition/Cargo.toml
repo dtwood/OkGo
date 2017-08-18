@@ -19,6 +19,3 @@ md-5 = "*"
 
 [build-dependencies]
 gcc = "*"
-
-[replace]
-"constant_time_eq:0.1.2" = { path = "../constant_time_eq" }

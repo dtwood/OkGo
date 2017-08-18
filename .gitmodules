@@ -1,8 +1,5 @@
-[submodule "OkGo 2/firmware/libopencm3"]
-	path = OkGo 2/firmware/libopencm3
-	url = https://github.com/libopencm3/libopencm3.git
-[submodule "OkGo 2/firmware/libopencm3-sys/libopencm3"]
-	path = OkGo 2/firmware/libopencm3-sys/libopencm3
+[submodule "OkGo2/firmware/libopencm3-sys/libopencm3"]
+	path = OkGo2/firmware/libopencm3-sys/libopencm3
 	url = https://github.com/libopencm3/libopencm3.git
 [submodule "okgo3/board/agg-kicad"]
 	path = okgo3/board/agg-kicad
