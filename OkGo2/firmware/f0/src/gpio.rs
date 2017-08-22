@@ -14,6 +14,7 @@ pub enum Port {
 #[repr(u32)]
 #[derive(Copy, Clone, Debug)]
 pub enum Mode {
+    Input = 0b00,
     Output = 0b01,
     Analog = 0b11,
     Alternate = 0b10,

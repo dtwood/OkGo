@@ -10,7 +10,6 @@ use io;
 use stm32f0xx;
 use f0::gpio::{Gpio, Port};
 use f0::spi::Spi;
-use f0::out::Output;
 use nb;
 
 const REQ_PACKET_LEN: usize = 11;

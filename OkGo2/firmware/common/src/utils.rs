@@ -1,23 +1,40 @@
-extern "C" {
-    /// Delay for approximately a millisecond. Very roughly calibrated by eye to
-    /// within about 20% precision.
-    /// @param delay Number of milliseconds to delay.
-    pub fn delay_ms(delay: u32);
+mod internal {
+    extern "C" {
+        pub fn delay_ms(delay: u32);
+        pub fn delay_us(delay: u32);
+        pub fn systick_init();
+        pub fn get_millis() -> u32;
+    }
+}
 
-    /// Delay for approximately a microsecond. Very roughly calibrated by eye to
-    /// within about 20% precision.
-    /// @param delay Number of microseconds to delay.
-    pub fn delay_us(delay: u32);
+/// Delay for approximately a millisecond. Very roughly calibrated by eye to
+/// within about 20% precision.
+/// @param delay Number of milliseconds to delay.
+pub fn delay_ms(delay: u32) {
+    unsafe {
+        internal::delay_ms(delay);
+    }
+}
 
-    /// Set a GPIO to a boolean value
-    pub fn gpio_set_bool(port: u32, pin: u16, value: bool);
+/// Delay for approximately a microsecond. Very roughly calibrated by eye to
+/// within about 20% precision.
+/// @param delay Number of microseconds to delay.
+pub fn delay_us(delay: u32) {
+    unsafe {
+        internal::delay_us(delay);
+    }
+}
 
-    /// Get a boolean value from a GPIO
-    pub fn gpio_get_bool(port: u32, pin: u16) -> bool;
+/// Setup systick
+pub fn systick_init() {
+    unsafe {
+        internal::systick_init();
+    }
+}
 
-    /// Setup systick
-    pub fn systick_init();
-
-    /// Get current millisecond timer value */
-    pub fn get_millis() -> u32;
+/// Get current millisecond timer value
+pub fn get_millis() -> u32 {
+    unsafe {
+        internal::get_millis()
+    }
 }

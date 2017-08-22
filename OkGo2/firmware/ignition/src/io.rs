@@ -1,8 +1,6 @@
 use bare_metal::CriticalSection;
 use stm32f0xx;
-use f0::adc::Adc;
 use f0::dac::Dac;
-use f0::out::Output;
 use f0::gpio::{Gpio, Port};
 
 /// Good values for this are:
@@ -28,32 +26,50 @@ output!(FIRE_CH4, B, 14);
 
 dac!(BUZZER, A, 4);
 
-adc!(BATT_MON, A, 0, 0);
-adc!(RELAY_SENSE, B, 1, 9);
-adc!(CONT_CH1, B, 0, 8);
-adc!(CONT_CH2, A, 7, 7);
-adc!(CONT_CH3, A, 6, 6);
-adc!(CONT_CH4, A, 5, 5);
+adc!(ADC);
+adc_pin!(BATT_MON, ADC, A, 0, 0);
+adc_pin!(RELAY_SENSE, ADC, B, 1, 9);
+adc_pin!(CONT_CH1, ADC, B, 0, 8);
+adc_pin!(CONT_CH2, ADC, A, 7, 7);
+adc_pin!(CONT_CH3, ADC, A, 6, 6);
+adc_pin!(CONT_CH4, ADC, A, 5, 5);
 
 pub fn init(cs: &CriticalSection) {
-    /* Clock all GPIO peripherals */
-    stm32f0xx::RCC.borrow(cs).ahbenr.write(|w| {
-        w.iopaen().set_bit().iopben().set_bit().iopcen().set_bit()
+    // Clock all GPIO peripherals
+    let rcc = stm32f0xx::RCC.borrow(cs);
+    rcc.ahbenr.write(|w| {
+        w
+        // GPIO A
+        .iopaen().set_bit()
+        // GPIO B
+        .iopben().set_bit()
+        // GPIO C
+        .iopcen().set_bit()
+    });
+    rcc.apb1enr.write(|w| {
+        w
+        // DAC
+        .dacen().set_bit()
+    });
+    rcc.apb2enr.write(|w| {
+        w
+        // ADC
+        .adcen().set_bit()
     });
 
-    /* Debug LEDs.  Default off. */
+    // Debug LEDs.  Default off.
     LED_GREEN.clear(cs);
     LED_YELLOW.clear(cs);
     LED_GREEN.setup(cs);
     LED_YELLOW.setup(cs);
 
-    /* Arm/disarm LED.  Default off. */
+    // Arm/disarm LED.  Default off.
     LED_ARM.clear(cs);
     LED_DISARM.clear(cs);
     LED_ARM.setup(cs);
     LED_DISARM.setup(cs);
 
-    /* Upstream relay and firing channels, default all off */
+    // Upstream relay and firing channels, default all off
     UPSTREAM_RELAY.clear(cs);
     FIRE_CH1.clear(cs);
     FIRE_CH2.clear(cs);
@@ -65,7 +81,8 @@ pub fn init(cs: &CriticalSection) {
     FIRE_CH3.setup(cs);
     FIRE_CH4.setup(cs);
 
-    /* Analog inputs */
+    // Analog inputs
+    ADC.setup(cs);
     BATT_MON.setup(cs);
     RELAY_SENSE.setup(cs);
     CONT_CH1.setup(cs);
@@ -73,11 +90,7 @@ pub fn init(cs: &CriticalSection) {
     CONT_CH3.setup(cs);
     CONT_CH4.setup(cs);
 
-    /* Buzzer DAC output */
-    stm32f0xx::RCC
-        .borrow(cs)
-        .apb1enr
-        .write(|w| w.dacen().set_bit());
+    // Buzzer DAC output
     BUZZER.setup(cs);
     BUZZER.set_right_u8(cs, 0);
     stm32f0xx::DAC

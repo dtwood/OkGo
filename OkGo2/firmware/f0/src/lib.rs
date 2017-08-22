@@ -1,6 +1,8 @@
 #![no_std]
 
 extern crate bare_metal;
+extern crate embedded_hal;
+extern crate nb;
 extern crate stm32f0xx;
 
 #[macro_use]
@@ -9,5 +11,7 @@ pub mod adc;
 pub mod dac;
 pub mod gpio;
 #[macro_use]
-pub mod out;
+pub mod output;
 pub mod spi;
+#[macro_use]
+pub mod input;

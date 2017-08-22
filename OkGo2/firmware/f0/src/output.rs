@@ -5,9 +5,9 @@ use bare_metal::CriticalSection;
 #[macro_export]
 macro_rules! output {
     ($id: ident, $port: ident, $pin: expr) => {
-        pub static $id: Output = Output {
-            gpio: Gpio {
-                port: Port::$port,
+        pub static $id: $crate::output::Output = $crate::output::Output {
+            gpio: $crate::gpio::Gpio {
+                port: $crate::gpio::Port::$port,
                 pin: $pin,
             },
         };

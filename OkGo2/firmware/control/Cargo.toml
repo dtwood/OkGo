@@ -11,6 +11,9 @@ libopencm3-sys = { path = "../libopencm3-sys" }
 firmware_common = { path = "../common" }
 rlibc = "*"
 compiler_builtins = { git = "https://github.com/rust-lang-nursery/compiler-builtins", features = ["c"] }
-
-[build-dependencies]
-gcc = "*"
+f0 = { path = "../f0" }
+bare-metal = "*"
+stm32f0xx = { path = "../stm32f0xx" }
+md-5 = "*"
+hmac = "*"
+nb = { git = "https://github.com/japaric/nb.git" }

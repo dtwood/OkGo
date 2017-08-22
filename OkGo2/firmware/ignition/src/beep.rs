@@ -1,7 +1,7 @@
 use ignition;
 use io::ignition_buzzer_set;
 use bare_metal::CriticalSection;
-use firmware_common::utils;
+use firmware_common::utils::get_millis;
 
 pub struct Beeper {
     beep_start: u32,
@@ -40,7 +40,7 @@ impl Beeper {
     }
 
     pub fn do_beep(&mut self, cs: &CriticalSection) {
-        let time = unsafe { utils::get_millis() };
+        let time = get_millis();
 
         if time - self.beep_start > self.beep_period {
             // Start a new beep with the high cycle

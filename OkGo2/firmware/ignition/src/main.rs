@@ -67,24 +67,22 @@ fn rust_main() -> ! {
                     io::FIRE_CH4.clear(&cs);
                 }
 
-                last_packet = unsafe { get_millis() };
-                unsafe { delay_ms(10) };
+                last_packet = get_millis();
+                delay_ms(10);
                 radio::transmit(&cs, &state);
                 radio::make_ready();
 
                 io::LED_GREEN.toggle(&cs);
                 io::LED_YELLOW.toggle(&cs);
-            },
-            Err(nb::Error::WouldBlock) => {
-                if unsafe { get_millis() } - last_packet > PACKET_DROP_DELAY {
-                    io::LED_ARM.clear(&cs);
-                    io::LED_DISARM.set(&cs);
-                    io::UPSTREAM_RELAY.clear(&cs);
-                    io::FIRE_CH1.clear(&cs);
-                    io::FIRE_CH2.clear(&cs);
-                    io::FIRE_CH3.clear(&cs);
-                    io::FIRE_CH4.clear(&cs);
-                }
+            }
+            Err(nb::Error::WouldBlock) => if get_millis() - last_packet > PACKET_DROP_DELAY {
+                io::LED_ARM.clear(&cs);
+                io::LED_DISARM.set(&cs);
+                io::UPSTREAM_RELAY.clear(&cs);
+                io::FIRE_CH1.clear(&cs);
+                io::FIRE_CH2.clear(&cs);
+                io::FIRE_CH3.clear(&cs);
+                io::FIRE_CH4.clear(&cs);
             },
             Err(nb::Error::Other(_)) => {
                 io::LED_ARM.clear(&cs);
@@ -113,11 +111,10 @@ pub extern "C" fn rust_begin_unwind(_: core::fmt::Arguments, _: &'static str, _:
 
 #[no_mangle]
 pub extern "C" fn abort() -> ! {
-    loop { }
+    loop {}
 }
 
 #[no_mangle]
-pub unsafe extern fn memcpy(dest: *mut u8, src: *const u8,
-                            n: usize) -> *mut u8 {
+pub unsafe extern "C" fn memcpy(dest: *mut u8, src: *const u8, n: usize) -> *mut u8 {
     rlibc::memcpy(dest, src, n)
 }

@@ -1,6 +1,5 @@
 use radio;
 use bare_metal::CriticalSection;
-use f0::adc;
 use io;
 use libopencm3_sys;
 
@@ -28,8 +27,4 @@ pub fn init(cs: &CriticalSection) {
 
     // Initialise radio and local state variables, read stored config
     radio::init(cs);
-
-    // ADC Setup: Clock periph, run init. Pins done in ignition_pins
-    // rcc_periph_clock_enable(RCC_ADC); // TODO
-    adc::init(cs);
 }
