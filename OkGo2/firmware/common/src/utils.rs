@@ -34,7 +34,5 @@ pub fn systick_init() {
 
 /// Get current millisecond timer value
 pub fn get_millis() -> u32 {
-    unsafe {
-        internal::get_millis()
-    }
+    unsafe { internal::get_millis() }
 }

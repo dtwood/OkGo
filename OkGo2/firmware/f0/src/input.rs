@@ -2,25 +2,25 @@ use gpio::{Gpio, Mode, Port, PullUpDown};
 use stm32f0xx;
 use bare_metal::CriticalSection;
 
-#[macro_export]
-macro_rules! input {
-    ($id: ident, $port: ident, $pin: expr) => {
-        pub static $id: $crate::input::Input = $crate::input::Input {
-            gpio: $crate::gpio::Gpio {
-                port: $crate::gpio::Port::$port,
-                pin: $pin,
-            },
-        };
-    }
-}
-
 #[derive(Debug)]
 pub struct Input {
     pub gpio: Gpio,
 }
 
 impl Input {
-    pub fn get_bool(&self, cs: &CriticalSection) -> bool {
+    pub const fn new(port: Port, pin: u32) -> Input {
+        Input {
+            gpio: Gpio {
+                port: port,
+                pin: pin,
+            },
+        }
+    }
+
+    pub fn get_bool(&self) -> bool {
+        let cs = unsafe { CriticalSection::new() };
+        let cs = &cs;
+
         (match self.gpio.port {
             Port::A => stm32f0xx::GPIOA.borrow(cs).odr.read().bits() & (1 << self.gpio.pin),
             Port::B => stm32f0xx::GPIOB.borrow(cs).odr.read().bits() & (1 << self.gpio.pin),
@@ -31,7 +31,7 @@ impl Input {
         }) != 0
     }
 
-    pub fn setup(&self, cs: &CriticalSection, pupd: PullUpDown) {
-        self.gpio.setup(cs, Mode::Input, pupd);
+    pub fn setup(&self, pupd: PullUpDown) {
+        self.gpio.setup(Mode::Input, pupd);
     }
 }

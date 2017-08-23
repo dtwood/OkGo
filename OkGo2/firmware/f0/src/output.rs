@@ -20,7 +20,18 @@ pub struct Output {
 }
 
 impl Output {
-    pub fn set(&self, cs: &CriticalSection) {
+    pub const fn new(port: Port, pin: u32) -> Output {
+        Output {
+            gpio: Gpio {
+                port: port,
+                pin: pin,
+            },
+        }
+    }
+
+    pub fn set(&self) {
+        let cs = unsafe { CriticalSection::new() };
+        let cs = &cs;
         match self.gpio.port {
             Port::A => stm32f0xx::GPIOA
                 .borrow(cs)
@@ -49,7 +60,9 @@ impl Output {
         }
     }
 
-    pub fn clear(&self, cs: &CriticalSection) {
+    pub fn clear(&self) {
+        let cs = unsafe { CriticalSection::new() };
+        let cs = &cs;
         match self.gpio.port {
             Port::A => stm32f0xx::GPIOA
                 .borrow(cs)
@@ -78,15 +91,17 @@ impl Output {
         }
     }
 
-    pub fn set_bool(&self, cs: &CriticalSection, value: bool) {
+    pub fn set_bool(&self, value: bool) {
         if value {
-            self.set(cs);
+            self.set();
         } else {
-            self.clear(cs);
+            self.clear();
         }
     }
 
-    pub fn get_bool(&self, cs: &CriticalSection) -> bool {
+    pub fn get_bool(&self) -> bool {
+        let cs = unsafe { CriticalSection::new() };
+        let cs = &cs;
         (match self.gpio.port {
             Port::A => stm32f0xx::GPIOA.borrow(cs).odr.read().bits() & (1 << self.gpio.pin),
             Port::B => stm32f0xx::GPIOB.borrow(cs).odr.read().bits() & (1 << self.gpio.pin),
@@ -97,11 +112,11 @@ impl Output {
         }) != 0
     }
 
-    pub fn toggle(&self, cs: &CriticalSection) {
-        self.set_bool(cs, !self.get_bool(cs));
+    pub fn toggle(&self) {
+        self.set_bool(!self.get_bool());
     }
 
-    pub fn setup(&self, cs: &CriticalSection) {
-        self.gpio.setup(cs, Mode::Output, PullUpDown::None);
+    pub fn setup(&self) {
+        self.gpio.setup(Mode::Output, PullUpDown::None);
     }
 }

@@ -1,8 +1,8 @@
 #![no_std]
 
-extern crate md_5;
-extern crate hmac;
 extern crate f0;
+extern crate hmac;
+extern crate md_5;
 
 pub mod adc;
 pub mod md5;

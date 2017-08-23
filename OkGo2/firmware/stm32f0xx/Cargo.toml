@@ -1,9 +1,13 @@
 [package]
 name = "stm32f0xx"
 version = "0.1.0"
-authors = ["david"]
+authors = ["David Wood <devel@dtwood.uk>"]
+
+[features]
+rt = ["cortex-m-rt"]
 
 [dependencies]
 cortex-m = "*"
 bare-metal = "*"
 vcell = "*"
+cortex-m-rt = { version="*", optional=true }

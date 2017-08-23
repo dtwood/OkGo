@@ -3,17 +3,17 @@
 #![feature(compiler_builtins_lib)]
 #![no_main]
 
-extern crate libopencm3_sys;
-extern crate firmware_common;
-extern crate rlibc;
+extern crate bare_metal;
 extern crate compiler_builtins;
 #[macro_use]
 extern crate f0;
-extern crate bare_metal;
-extern crate stm32f0xx;
-extern crate md_5;
+extern crate firmware_common;
 extern crate hmac;
+extern crate libopencm3_sys;
+extern crate md_5;
 extern crate nb;
+extern crate rlibc;
+extern crate stm32f0xx;
 
 mod control;
 mod io;

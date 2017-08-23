@@ -151,7 +151,6 @@ pub fn display_update(
     control_display_ch_status(cs, state.ch2_status, radio_state.rx_status & 0x02 != 0);
     control_display_ch_status(cs, state.ch3_status, radio_state.rx_status & 0x04 != 0);
     control_display_ch_status(cs, state.ch4_status, radio_state.rx_status & 0x08 != 0);
-
 }
 
 /// Convert a channel status enum into a string and print to LCD

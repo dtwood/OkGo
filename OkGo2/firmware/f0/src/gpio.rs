@@ -39,7 +39,9 @@ pub struct Gpio {
 }
 
 impl Gpio {
-    pub fn setup(&self, cs: &CriticalSection, mode: Mode, pupd: PullUpDown) {
+    pub fn setup(&self, mode: Mode, pupd: PullUpDown) {
+        let cs = unsafe { CriticalSection::new() };
+        let cs = &cs;
         match self.port {
             Port::A => {
                 stm32f0xx::GPIOA.borrow(cs).moder.modify(|r, w| unsafe {
@@ -116,8 +118,11 @@ impl Gpio {
         }
     }
 
-    pub fn set_alternate_function(&self, cs: &CriticalSection, af: AlternateFunction) {
+    pub fn set_alternate_function(&self, af: AlternateFunction) {
         let low = self.pin < 16;
+
+        let cs = unsafe { CriticalSection::new() };
+        let cs = &cs;
 
         match self.port {
             Port::A => if low {

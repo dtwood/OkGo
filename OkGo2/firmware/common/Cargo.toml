@@ -7,6 +7,8 @@ authors = ["david"]
 md-5 = "*"
 hmac = "*"
 f0 = { path = "../f0" }
+libopencm3-sys = { path = "../libopencm3-sys" }
 
 [build-dependencies]
 gcc = "*"
+libopencm3-sys = { path = "../libopencm3-sys" }

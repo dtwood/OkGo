@@ -1,120 +1,190 @@
 #![no_std]
-#![feature(lang_items, unwind_attributes)]
-#![feature(compiler_builtins_lib)]
+#![feature(const_fn)]
+#![feature(lang_items)]
 #![feature(never_type)]
-#![no_main]
+#![feature(proc_macro)]
+#![feature(unwind_attributes)]
 
-extern crate libopencm3_sys;
-extern crate firmware_common;
-extern crate rlibc;
-extern crate compiler_builtins;
+extern crate bare_metal;
+extern crate cortex_m_rtfm as rtfm;
 #[macro_use]
 extern crate f0;
-extern crate bare_metal;
-extern crate stm32f0xx;
+extern crate firmware_common;
 extern crate hmac;
 extern crate md_5;
 extern crate nb;
+extern crate stm32f0xx;
 
-pub mod beep;
-pub mod radio;
-pub mod ignition;
-pub mod io;
+mod beeper;
+mod radio;
+mod io;
+mod utils;
 
-use bare_metal::CriticalSection;
-use firmware_common::utils::{delay_ms, get_millis};
+use rtfm::app;
+use f0::output::Output;
+use f0::gpio::Port;
+use f0::adc::Adc;
+use f0::dac::Dac;
+use rtfm::Resource;
 
 /// Drop delay in ms
 const PACKET_DROP_DELAY: u32 = 5000;
 
-#[no_mangle]
-pub unsafe extern "C" fn main() -> i32 {
-    rust_main();
-}
+app! {
+    device: stm32f0xx,
 
-fn rust_main() -> ! {
-    let cs = unsafe { CriticalSection::new() };
-    let mut beeper = beep::Beeper::new();
-    let mut last_packet: u32 = 0;
+    resources: {
+        static BEEPER: beeper::Beeper = beeper::Beeper::new(Dac::new(Port::A, 4));
+        static LAST_PACKET: u32 = 0;
+        static MILLIS: u32 = 0;
 
-    ignition::init(&cs);
+        static LED_GREEN: Output = Output::new(Port::B, 13);
+        static LED_YELLOW: Output = Output::new(Port::B, 12);
+        static LED_ARM: Output = Output::new(Port::B, 8);
+        static LED_DISARM: Output = Output::new(Port::B, 9);
 
-    io::LED_GREEN.clear(&cs);
-    io::LED_YELLOW.clear(&cs);
+        static UPSTREAM_RELAY: Output = Output::new(Port::A, 10);
+        static FIRE_CH1: Output = Output::new(Port::A, 9);
+        static FIRE_CH2: Output = Output::new(Port::A, 8);
+        static FIRE_CH3: Output = Output::new(Port::B, 15);
+        static FIRE_CH4: Output = Output::new(Port::B, 14);
 
-    radio::make_ready();
+        static BATT_MON: Adc = Adc::new(Port::A, 0, 0);
+        static RELAY_SENSE: Adc = Adc::new(Port::B, 1, 9);
+        static CONT_CH1: Adc = Adc::new(Port::B, 0, 8);
+        static CONT_CH2: Adc = Adc::new(Port::A, 7, 7);
+        static CONT_CH3: Adc = Adc::new(Port::A, 6, 6);
+        static CONT_CH4: Adc = Adc::new(Port::A, 5, 5);
+    },
 
-    loop {
-        match radio::receive_async() {
-            Ok(state) => {
-                beeper.set_state(&state);
+    tasks: {
+        SYS_TICK: {
+            path: sys_tick,
+            resources: [MILLIS],
+            priority: 2,
+        },
 
-                if state.armed {
-                    io::LED_ARM.set(&cs);
-                    io::LED_DISARM.clear(&cs);
-                    io::UPSTREAM_RELAY.set(&cs);
-                    io::FIRE_CH1.set_bool(&cs, state.fire_ch1);
-                    io::FIRE_CH2.set_bool(&cs, state.fire_ch2);
-                    io::FIRE_CH3.set_bool(&cs, state.fire_ch3);
-                    io::FIRE_CH4.set_bool(&cs, state.fire_ch4);
-                } else {
-                    io::LED_ARM.clear(&cs);
-                    io::LED_DISARM.set(&cs);
-                    io::UPSTREAM_RELAY.clear(&cs);
-                    io::FIRE_CH1.clear(&cs);
-                    io::FIRE_CH2.clear(&cs);
-                    io::FIRE_CH3.clear(&cs);
-                    io::FIRE_CH4.clear(&cs);
-                }
-
-                last_packet = get_millis();
-                delay_ms(10);
-                radio::transmit(&cs, &state);
-                radio::make_ready();
-
-                io::LED_GREEN.toggle(&cs);
-                io::LED_YELLOW.toggle(&cs);
-            }
-            Err(nb::Error::WouldBlock) => if get_millis() - last_packet > PACKET_DROP_DELAY {
-                io::LED_ARM.clear(&cs);
-                io::LED_DISARM.set(&cs);
-                io::UPSTREAM_RELAY.clear(&cs);
-                io::FIRE_CH1.clear(&cs);
-                io::FIRE_CH2.clear(&cs);
-                io::FIRE_CH3.clear(&cs);
-                io::FIRE_CH4.clear(&cs);
-            },
-            Err(nb::Error::Other(_)) => {
-                io::LED_ARM.clear(&cs);
-                io::LED_DISARM.set(&cs);
-                io::UPSTREAM_RELAY.clear(&cs);
-                io::FIRE_CH1.clear(&cs);
-                io::FIRE_CH2.clear(&cs);
-                io::FIRE_CH3.clear(&cs);
-                io::FIRE_CH4.clear(&cs);
-            }
-        }
-
-        beeper.do_beep(&cs);
+        TIM2_IRQ: {
+            path: timer_tick,
+            resources: [
+                BEEPER, LAST_PACKET, MILLIS,
+                LED_GREEN, LED_YELLOW, LED_ARM, LED_DISARM, // Status LEDs
+                UPSTREAM_RELAY, FIRE_CH1, FIRE_CH2, FIRE_CH3, FIRE_CH4, // Firing Channels
+                ADC, BATT_MON, RELAY_SENSE, CONT_CH1, CONT_CH2, CONT_CH3, CONT_CH4, // ADCs
+            ],
+        },
     }
 }
 
+// The initialization phase.
+//
+// This runs first and within a *global* critical section. Nothing can preempt
+// this function.
+fn init(p: init::Peripherals, r: init::Resources) {
+    // Setup crystal oscillator and systick
+    // unsafe {
+    //     libopencm3_sys::rcc_clock_setup_in_hsi_out_48mhz();
+    //     libopencm3_sys::systick_init();
+    // }
+
+    // Clock GPIOs, set pin modes
+    io::init(&p, &r);
+    // Initialise radio and local state variables, read stored config
+    radio::init(&p);
+
+    radio::make_ready();
+}
+
+fn idle() -> ! {
+    loop {
+        rtfm::wfi();
+    }
+}
+
+fn sys_tick(_t: &mut rtfm::Threshold, r: SYS_TICK::Resources) {
+    **r.MILLIS += 1;
+}
+
+fn timer_tick(t: &mut rtfm::Threshold, r: TIM2_IRQ::Resources) {
+    match radio::receive_async() {
+        Ok(packet) => {
+            **r.LAST_PACKET = **r.MILLIS.borrow(t);
+
+            r.BEEPER.set_state(
+                if packet.armed {
+                    beeper::Rate::Fast
+                } else {
+                    beeper::Rate::Slow
+                },
+                match packet.beep_volume {
+                    0 => beeper::Volume::Silent,
+                    1 => beeper::Volume::Low,
+                    2 => beeper::Volume::Loud,
+                    _ => beeper::Volume::Medium,
+                },
+            );
+
+            if packet.armed {
+                r.LED_ARM.set();
+                r.UPSTREAM_RELAY.set();
+                r.FIRE_CH1.set_bool(packet.fire_ch1);
+                r.FIRE_CH2.set_bool(packet.fire_ch2);
+                r.FIRE_CH3.set_bool(packet.fire_ch3);
+                r.FIRE_CH4.set_bool(packet.fire_ch4);
+                r.LED_DISARM.clear();
+            } else {
+                r.LED_DISARM.set();
+                r.UPSTREAM_RELAY.clear();
+                r.FIRE_CH1.clear();
+                r.FIRE_CH2.clear();
+                r.FIRE_CH3.clear();
+                r.FIRE_CH4.clear();
+                r.LED_ARM.clear();
+            }
+
+            utils::delay_ms(t, r.MILLIS, 10);
+            radio::transmit(&radio::CfmPacket {
+                received_rssi: packet.rssi,
+                battery_voltage: utils::adc_to_battery_voltage(r.BATT_MON.read()),
+                armed: packet.armed,
+                fire_ch1: packet.fire_ch1,
+                fire_ch2: packet.fire_ch2,
+                fire_ch3: packet.fire_ch3,
+                fire_ch4: packet.fire_ch4,
+                cont_ch1: utils::adc_to_ohms(r.CONT_CH1.read()),
+                cont_ch2: utils::adc_to_ohms(r.CONT_CH2.read()),
+                cont_ch3: utils::adc_to_ohms(r.CONT_CH3.read()),
+                cont_ch4: utils::adc_to_ohms(r.CONT_CH4.read()),
+            });
+            radio::make_ready();
+
+            r.LED_GREEN.toggle();
+            r.LED_YELLOW.toggle();
+        }
+        Err(nb::Error::WouldBlock) => {
+            if **r.MILLIS.borrow(t) - **r.LAST_PACKET > PACKET_DROP_DELAY {
+                r.LED_DISARM.set();
+                r.UPSTREAM_RELAY.clear();
+                r.FIRE_CH1.clear();
+                r.FIRE_CH2.clear();
+                r.FIRE_CH3.clear();
+                r.FIRE_CH4.clear();
+                r.LED_ARM.clear();
+            };
+        }
+        Err(nb::Error::Other(_)) => {
+            r.LED_DISARM.set();
+            r.UPSTREAM_RELAY.clear();
+            r.FIRE_CH1.clear();
+            r.FIRE_CH2.clear();
+            r.FIRE_CH3.clear();
+            r.FIRE_CH4.clear();
+            r.LED_ARM.clear();
+        }
+    }
+
+    r.BEEPER.do_beep();
+}
+
 #[lang = "eh_personality"]
-#[no_mangle]
-pub extern "C" fn rust_eh_personality() {}
-
-#[lang = "panic_fmt"]
-#[no_mangle]
-pub extern "C" fn rust_begin_unwind(_: core::fmt::Arguments, _: &'static str, _: u32) -> ! {
-    loop {}
-}
-
-#[no_mangle]
-pub extern "C" fn abort() -> ! {
-    loop {}
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn memcpy(dest: *mut u8, src: *const u8, n: usize) -> *mut u8 {
-    rlibc::memcpy(dest, src, n)
-}
+extern "C" fn eh_personality() {}

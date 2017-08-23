@@ -1,3 +1,4 @@
+#![feature(const_fn)]
 #![no_std]
 
 extern crate bare_metal;
