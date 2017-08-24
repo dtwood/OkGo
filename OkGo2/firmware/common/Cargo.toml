@@ -7,10 +7,5 @@ authors = ["david"]
 bitflags = "*"
 f0 = { path = "../f0" }
 hmac = "*"
-libopencm3-sys = { path = "../libopencm3-sys" }
 md-5 = "*"
 stm32f0xx = { path = "../stm32f0xx" }
-
-[build-dependencies]
-gcc = "*"
-libopencm3-sys = { path = "../libopencm3-sys" }

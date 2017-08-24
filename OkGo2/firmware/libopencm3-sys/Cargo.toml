@@ -1,7 +1,0 @@
-[package]
-name = "libopencm3-sys"
-version = "0.1.0"
-authors = ["david"]
-
-[build-dependencies]
-make = { path = "../../../../make-rs" }
