@@ -1,8 +1,10 @@
 use f0::dac::Dac;
 use rtfm;
+use f0::gpio::Port;
+use stm32f0xx;
 
+#[derive(Copy, Clone, Debug)]
 pub struct Beeper {
-    device: Dac,
     start: u32,
     period: u32,
     len: u32,
@@ -15,11 +17,13 @@ pub struct Beeper {
     volume: u8,
 }
 
+#[derive(Copy, Clone, Debug)]
 pub enum Rate {
     Fast,
     Slow,
 }
 
+#[derive(Copy, Clone, Debug)]
 pub enum Volume {
     Silent,
     Low,
@@ -28,9 +32,8 @@ pub enum Volume {
 }
 
 impl Beeper {
-    pub const fn new(device: Dac) -> Beeper {
+    pub const fn new() -> Beeper {
         Beeper {
-            device: device,
             start: 0,
             period: 1000,
             len: 50,
@@ -38,11 +41,12 @@ impl Beeper {
         }
     }
 
-    pub fn setup(&self) {
-        self.device.setup();
+    pub fn init(&self, dac: &stm32f0xx::DAC, port: Port, pin: u32) {
+        dac.init(port, pin);
+        dac.cr.write(|w| w.ten1().clear_bit().en1().set_bit());
     }
 
-    pub fn set_state(&mut self, rate: Rate, volume: Volume) {
+    pub fn set_rate(&mut self, rate: Rate) {
         match rate {
             Rate::Fast => {
                 self.period = 200;
@@ -53,7 +57,9 @@ impl Beeper {
                 self.len = 50;
             }
         }
+    }
 
+    pub fn set_volume(&mut self, volume: Volume) {
         self.volume = match volume {
             Volume::Silent => 0,   // No beep
             Volume::Low => 94,     // Low beep
@@ -62,9 +68,10 @@ impl Beeper {
         }
     }
 
-    pub fn do_beep<M>(&mut self, t: &rtfm::Threshold, millis: &M)
+    pub fn do_beep<M, DAC>(&mut self, t: &mut rtfm::Threshold, millis: &M, dac: &DAC)
     where
         M: rtfm::Resource<Data = u32>,
+        DAC: rtfm::Resource<Data = stm32f0xx::DAC>,
     {
         let time = **millis.borrow(t);
 
@@ -72,10 +79,10 @@ impl Beeper {
             // Start a new beep with the high cycle
             self.start = time;
 
-            self.device.set_right_u8(self.volume);
+            dac.claim(t, |dac, _| dac.set_right_u8(self.volume));
         } else if time - self.start > self.len {
             // Do the low cycle of the beep
-            self.device.set_right_u8(0);
+            dac.claim(t, |dac, _| dac.set_right_u8(0));
         }
     }
 }

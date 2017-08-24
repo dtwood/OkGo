@@ -2,6 +2,7 @@
 #![no_std]
 
 extern crate bare_metal;
+extern crate cortex_m_rtfm as rtfm;
 extern crate embedded_hal;
 extern crate nb;
 extern crate stm32f0xx;

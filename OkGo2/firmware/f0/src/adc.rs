@@ -1,6 +1,7 @@
 use stm32f0xx;
 use bare_metal::CriticalSection;
-use gpio::{Gpio, Mode, PullUpDown, Port};
+use gpio::{Gpio, Mode, Port, PullUpDown};
+use rtfm;
 
 pub fn set_up_adc() {
     let cs = unsafe { CriticalSection::new() };
@@ -34,8 +35,8 @@ pub fn set_up_adc() {
 }
 
 pub struct Adc {
-    pub gpio: Gpio,
-    pub channel: u8,
+    gpio: Gpio,
+    channel: u8,
 }
 
 impl Adc {
@@ -55,13 +56,13 @@ impl Adc {
         self.gpio.setup(Mode::Analog, PullUpDown::None);
     }
 
-    pub fn read(&self) -> u16 {
-        let cs = unsafe { CriticalSection::new() };
-        let cs = &cs;
-        let adc = stm32f0xx::ADC.borrow(cs);
+    pub fn read<ADC>(&self, t: &rtfm::Threshold, adc: &ADC) -> u16
+    where
+        ADC: rtfm::Resource<Data = stm32f0xx::ADC>,
+    {
+        let adc = adc.borrow(t);
 
-        adc.chselr
-            .write(|w| unsafe { w.bits(1 << self.channel) });
+        adc.chselr.write(|w| unsafe { w.bits(1 << self.channel) });
 
         adc.cr.write(|w| w.adstart().set_bit());
         while adc.isr.read().eoc().bit_is_clear() { /* Wait for the conversion to finish */ }

@@ -8,3 +8,4 @@ bare-metal = "*"
 embedded-hal = { git = "https://github.com/japaric/embedded-hal" }
 nb = { git = "https://github.com/japaric/nb" }
 stm32f0xx = { path = "../stm32f0xx" }
+cortex-m-rtfm = "*"

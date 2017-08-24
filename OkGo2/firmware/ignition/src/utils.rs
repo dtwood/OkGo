@@ -42,12 +42,19 @@ pub fn adc_to_battery_voltage(raw: u16) -> u8 {
     }
 }
 
-pub fn delay_ms<M>(t: &rtfm::Threshold, millis: &M, time: u32)
+pub fn delay_ms<Millis>(t: &mut rtfm::Threshold, millis: &Millis, time: u32)
 where
-    M: rtfm::Resource<Data = u32>,
+    Millis: rtfm::Resource<Data = u32>,
 {
-    let start = **millis.borrow(t);
-    while **millis.borrow(t) < start + time {
+    let start = get_millis(t, millis);
+    while get_millis(t, millis) < start + time {
         rtfm::wfi();
     }
+}
+
+pub fn get_millis<Millis>(t: &mut rtfm::Threshold, millis: &Millis) -> u32
+where
+    Millis: rtfm::Resource<Data = u32>,
+ {
+    millis.claim(t, |millis, _t| **millis)
 }
