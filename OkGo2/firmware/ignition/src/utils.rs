@@ -1,5 +1,5 @@
 use firmware_common::adc::adc_to_millivolts;
-use rtfm::{self, Resource};
+use rtfm;
 
 /// Convert raw ADC value to continuity ohms
 pub fn adc_to_ohms(raw: u16) -> u8 {
@@ -42,7 +42,10 @@ pub fn adc_to_battery_voltage(raw: u16) -> u8 {
     }
 }
 
-pub fn delay_ms(t: &rtfm::Threshold, millis: ::_resource::MILLIS, time: u32) {
+pub fn delay_ms<M>(t: &rtfm::Threshold, millis: &M, time: u32)
+where
+    M: rtfm::Resource<Data = u32>,
+{
     let start = **millis.borrow(t);
     while **millis.borrow(t) < start + time {
         rtfm::wfi();

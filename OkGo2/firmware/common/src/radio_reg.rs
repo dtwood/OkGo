@@ -1,282 +1,207 @@
-# ! [ feature ( abi_msp430_interrupt ) ] # ! [ cfg_attr ( feature = "rt" , feature ( global_asm ) ) ] # ! [ cfg_attr ( feature = "rt" , feature ( macro_reexport ) ) ] # ! [ cfg_attr ( feature = "rt" , feature ( used ) ) ] # ! [ doc = "Peripheral access API for RFM microcontrollers (generated using svd2rust v0.11.3)\n\nYou can find an overview of the API [here].\n\n[here]: https://docs.rs/svd2rust/0.11.3/svd2rust/#peripheral-api" ] # ! [ deny ( missing_docs ) ] # ! [ deny ( warnings ) ] # ! [ allow ( non_camel_case_types ) ] # ! [ feature ( const_fn ) ] # ! [ no_std ]
-extern crate bare_metal;
-#[macro_reexport(default_handler)]
-#[cfg(feature = "rt")]
-extern crate msp430_rt;
-extern crate vcell;
-use core::ops::Deref;
-use bare_metal::Peripheral;
-#[doc = "32 Timer / Counter, counting up or down from different sources"]
-pub const TIMER0: Peripheral<TIMER0> = unsafe { Peripheral::new(0) };
-#[doc = "32 Timer / Counter, counting up or down from different sources"]
-pub mod timer0 {
-    use vcell::VolatileCell;
-    #[doc = r" Register block"]
-    #[repr(C)]
-    pub struct RegisterBlock {
-        #[doc = "0x00 - Control Register"] pub cr: CR,
-    }
-    #[doc = "Control Register"]
-    pub struct CR {
-        register: VolatileCell<u32>,
-    }
-    #[doc = "Control Register"]
-    pub mod cr {
-        #[doc = r" Value read from the register"]
-        pub struct R {
-            bits: u32,
-        }
-        #[doc = r" Value to write to the register"]
-        pub struct W {
-            bits: u32,
-        }
-        impl super::CR {
-            #[doc = r" Modifies the contents of the register"]
-            #[inline(always)]
-            pub fn modify<F>(&self, f: F)
-            where
-                for<'w> F: FnOnce(&R, &'w mut W) -> &'w mut W,
-            {
-                let bits = self.register.get();
-                let r = R { bits: bits };
-                let mut w = W { bits: bits };
-                f(&r, &mut w);
-                self.register.set(w.bits);
-            }
-            #[doc = r" Reads the contents of the register"]
-            #[inline(always)]
-            pub fn read(&self) -> R {
-                R {
-                    bits: self.register.get(),
-                }
-            }
-            #[doc = r" Writes to the register"]
-            #[inline(always)]
-            pub fn write<F>(&self, f: F)
-            where
-                F: FnOnce(&mut W) -> &mut W,
-            {
-                let mut w = W::reset_value();
-                f(&mut w);
-                self.register.set(w.bits);
-            }
-            #[doc = r" Writes the reset value to the register"]
-            #[inline(always)]
-            pub fn reset(&self) {
-                self.write(|w| w)
-            }
-        }
-        #[doc = "Possible values of the field `EN`"]
-        #[derive(Clone, Copy, Debug, PartialEq)]
-        pub enum ENR {
-            #[doc = "Timer is disabled and does not operate"] DISABLE,
-            #[doc = "Timer is enabled and can operate"] ENABLE,
-        }
-        impl ENR {
-            #[doc = r" Returns `true` if the bit is clear (0)"]
-            #[inline(always)]
-            pub fn bit_is_clear(&self) -> bool {
-                !self.bit()
-            }
-            #[doc = r" Returns `true` if the bit is set (1)"]
-            #[inline(always)]
-            pub fn bit_is_set(&self) -> bool {
-                self.bit()
-            }
-            #[doc = r" Value of the field as raw bits"]
-            #[inline(always)]
-            pub fn bit(&self) -> bool {
-                match *self {
-                    ENR::DISABLE => false,
-                    ENR::ENABLE => true,
-                }
-            }
-            #[allow(missing_docs)]
-            #[doc(hidden)]
-            #[inline(always)]
-            pub fn _from(value: bool) -> ENR {
-                match value {
-                    false => ENR::DISABLE,
-                    true => ENR::ENABLE,
-                }
-            }
-            #[doc = "Checks if the value of the field is `DISABLE`"]
-            #[inline(always)]
-            pub fn is_disable(&self) -> bool {
-                *self == ENR::DISABLE
-            }
-            #[doc = "Checks if the value of the field is `ENABLE`"]
-            #[inline(always)]
-            pub fn is_enable(&self) -> bool {
-                *self == ENR::ENABLE
-            }
-        }
-        #[doc = "Values that can be written to the field `EN`"]
-        pub enum ENW {
-            #[doc = "Timer is disabled and does not operate"] DISABLE,
-            #[doc = "Timer is enabled and can operate"] ENABLE,
-        }
-        impl ENW {
-            #[allow(missing_docs)]
-            #[doc(hidden)]
-            #[inline(always)]
-            pub fn _bits(&self) -> bool {
-                match *self {
-                    ENW::DISABLE => false,
-                    ENW::ENABLE => true,
-                }
-            }
-        }
-        #[doc = r" Proxy"]
-        pub struct _ENW<'a> {
-            w: &'a mut W,
-        }
-        impl<'a> _ENW<'a> {
-            #[doc = r" Writes `variant` to the field"]
-            #[inline(always)]
-            pub fn variant(self, variant: ENW) -> &'a mut W {
-                {
-                    self.bit(variant._bits())
-                }
-            }
-            #[doc = "Timer is disabled and does not operate"]
-            #[inline(always)]
-            pub fn disable(self) -> &'a mut W {
-                self.variant(ENW::DISABLE)
-            }
-            #[doc = "Timer is enabled and can operate"]
-            #[inline(always)]
-            pub fn enable(self) -> &'a mut W {
-                self.variant(ENW::ENABLE)
-            }
-            #[doc = r" Sets the field bit"]
-            pub fn set_bit(self) -> &'a mut W {
-                self.bit(true)
-            }
-            #[doc = r" Clears the field bit"]
-            pub fn clear_bit(self) -> &'a mut W {
-                self.bit(false)
-            }
-            #[doc = r" Writes raw bits to the field"]
-            #[inline(always)]
-            pub fn bit(self, value: bool) -> &'a mut W {
-                const MASK: bool = true;
-                const OFFSET: u8 = 0;
-                self.w.bits &= !((MASK as u32) << OFFSET);
-                self.w.bits |= ((value & MASK) as u32) << OFFSET;
-                self.w
-            }
-        }
-        #[doc = "Values that can be written to the field `RST`"]
-        pub enum RSTW {
-            #[doc = "Reset the Timer"] RESET_TIMER,
-        }
-        impl RSTW {
-            #[allow(missing_docs)]
-            #[doc(hidden)]
-            #[inline(always)]
-            pub fn _bits(&self) -> bool {
-                match *self {
-                    RSTW::RESET_TIMER => true,
-                }
-            }
-        }
-        #[doc = r" Proxy"]
-        pub struct _RSTW<'a> {
-            w: &'a mut W,
-        }
-        impl<'a> _RSTW<'a> {
-            #[doc = r" Writes `variant` to the field"]
-            #[inline(always)]
-            pub fn variant(self, variant: RSTW) -> &'a mut W {
-                {
-                    self.bit(variant._bits())
-                }
-            }
-            #[doc = "Reset the Timer"]
-            #[inline(always)]
-            pub fn reset_timer(self) -> &'a mut W {
-                self.variant(RSTW::RESET_TIMER)
-            }
-            #[doc = r" Sets the field bit"]
-            pub fn set_bit(self) -> &'a mut W {
-                self.bit(true)
-            }
-            #[doc = r" Clears the field bit"]
-            pub fn clear_bit(self) -> &'a mut W {
-                self.bit(false)
-            }
-            #[doc = r" Writes raw bits to the field"]
-            #[inline(always)]
-            pub fn bit(self, value: bool) -> &'a mut W {
-                const MASK: bool = true;
-                const OFFSET: u8 = 1;
-                self.w.bits &= !((MASK as u32) << OFFSET);
-                self.w.bits |= ((value & MASK) as u32) << OFFSET;
-                self.w
-            }
-        }
-        impl R {
-            #[doc = r" Value of the register as raw bits"]
-            #[inline(always)]
-            pub fn bits(&self) -> u32 {
-                self.bits
-            }
-            #[doc = "Bit 0 - Enable"]
-            #[inline(always)]
-            pub fn en(&self) -> ENR {
-                ENR::_from({
-                    const MASK: bool = true;
-                    const OFFSET: u8 = 0;
-                    ((self.bits >> OFFSET) & MASK as u32) != 0
-                })
-            }
-        }
-        impl W {
-            #[doc = r" Reset value of the register"]
-            #[inline(always)]
-            pub fn reset_value() -> W {
-                W { bits: 0 }
-            }
-            #[doc = r" Writes raw bits to the register"]
-            #[inline(always)]
-            pub unsafe fn bits(&mut self, bits: u32) -> &mut Self {
-                self.bits = bits;
-                self
-            }
-            #[doc = "Bit 0 - Enable"]
-            #[inline(always)]
-            pub fn en(&mut self) -> _ENW {
-                _ENW { w: self }
-            }
-            #[doc = "Bit 1 - Reset Timer"]
-            #[inline(always)]
-            pub fn rst(&mut self) -> _RSTW {
-                _RSTW { w: self }
-            }
-        }
+#![allow(non_upper_case_globals)]
+
+/// RFM Modes, see datasheet p31
+#[repr(u32)]
+#[derive(Copy, Clone)]
+pub enum Mode {
+    Sleep = 0x00,
+    Standby = 0x01,
+    Tx = 0x03,
+    RxContinuous = 0x05,
+    RxSingle = 0x06,
+    Cad = 0x07,
+}
+
+/// Selected RFM registers, all LoRa mode}
+/// Use Semtech datasheet:}
+/// http://www.semtech.com/images/datasheet/sx1276_77_78_79.pdf}
+/// Compact list pp.90-92, details pp.108-115.
+#[repr(u8)]
+pub enum Register {
+    /// RX+TX FIFO access register
+    Fifo = 0x00,
+    /// Operation mode
+    OpMode = 0x01,
+    /// Carrier frequency, most significant byte
+    FrfMsb = 0x06,
+    /// Carrier frequency, middle byte
+    FrfMid = 0x07,
+    /// Carrier freq., least significant byte
+    FrfLsb = 0x08,
+    /// PA and power control
+    PaConfig = 0x09,
+    /// PA current limit config, for boost
+    Ocp = 0x0b,
+    /// RX+TX FIFO access pointer
+    FifoAddrPtr = 0x0d,
+    /// TX FIFO base addr in buffer
+    FifoTxBaseAddr = 0x0e,
+    /// RX FIFO base addr in buffer
+    FifoRxBaseAddr = 0x0f,
+    /// Start address of last packet received
+    FifoRxCurrentAddr = 0x10,
+    /// Interrupt indicator flags
+    IrqFlags = 0x12,
+    /// Number of bytes received
+    RxNbBytes = 0x13,
+    /// Estimated last packet SNR
+    PktSnrValue = 0x19,
+    /// RSSI of last packet
+    PktRssiValue = 0x1a,
+    /// FHSS start channel
+    HopChannel = 0x1c,
+    /// Modem PHY config 1
+    ModemConfig1 = 0x1d,
+    /// Modem PHY config 2
+    ModemConfig2 = 0x1e,
+    /// RX timeout, only byte
+    SymbTimeoutLsb = 0x1f,
+    /// Preamble length, most significant byte
+    PreambleMsb = 0x20,
+    /// Preamble length, least significant byte
+    PreambleLsb = 0x21,
+    /// payload length
+    PayloadLength = 0x22,
+    /// maximum payload length
+    MaxPayloadLength = 0x23,
+    /// FHSS hop period
+    HopPeriod = 0x24,
+    /// Address in FIFO of last byte received
+    FifoRxByteAddr = 0x25,
+    /// Modem PHY config 3
+    ModemConfig3 = 0x26,
+    /// LoRa detection settings
+    DetectOptimize = 0x31,
+    /// = 0x0a for SF7-12 = 0x0c for SF 6
+    DetectionThreshold = 0x37,
+    /// DIO0-3 mapping
+    DioMapping1 = 0x40,
+    /// DIO4-5 mapping
+    DioMapping2 = 0x41,
+    /// RFM silicon version/revision
+    Version = 0x42,
+    /// High power PA settings
+    PaDac = 0x4d,
+}
+
+// Selected contents of selected bitfield registers above
+bitflags! {
+    /// OpMode = 0x01
+    pub struct OpMode: u8 {
+        /// 1=LoRa, 0=FSK/OOK, only in sleep
+        const LongRangeMode    = 1 << 7;
+        /// Access FSK regs 0d:3f in LoRa mode
+        const AccessSharedReg  = 1 << 6;
+        /// Transceiver modes: 0=sleep,1=stby
+        const Mode2            = 1 << 2;
+        /// 2=FSTx, 3=Tx, 4=FSRx, 5=Rx
+        const Mode1            = 1 << 1;
+        /// Others reserved
+        const Mode0            = 1 << 0;
     }
 }
-#[doc = "32 Timer / Counter, counting up or down from different sources"]
-pub struct TIMER0 {
-    register_block: timer0::RegisterBlock,
-}
-impl Deref for TIMER0 {
-    type Target = timer0::RegisterBlock;
-    fn deref(&self) -> &timer0::RegisterBlock {
-        &self.register_block
+
+bitflags!{
+    /// PaConfig = 0x09
+    pub struct PaConfig: u8 {
+        /// 1=PA_BOOST-20dBm 0=RFO-14dBm
+        const PaSelect         = 1 << 7;
+        /// Max Power
+        const MaxPower2        = 1 << 6;
+        /// Pmax = 10.8 + 0.6*MaxPower [dBm]
+        const MaxPower1        = 1 << 5;
+        const MaxPower0        = 1 << 4;
+        /// Output power
+        const OutputPower3     = 1 << 3;
+        /// RFO: Pout = Pmax - 15 + OutputPower
+        const OutputPower2     = 1 << 2;
+        /// PA_BOOST: Pout = 2 + OutputPower
+        const OutputPower1     = 1 << 1;
+        const OutputPower0     = 1 << 0;
     }
 }
-#[doc = r" All the peripherals"]
-#[allow(non_snake_case)]
-pub struct Peripherals<'a> {
-    #[doc = "TIMER0"] pub TIMER0: &'a TIMER0,
+
+bitflags!{
+    /// IrqFlags = 0x12
+    pub struct IrqFlags: u8 {
+        /// RX timeout
+        const RxTimeout        = 1 << 7;
+        /// Packet received
+        const RxDone           = 1 << 6;
+        /// Payload CRC fail
+        const PayloadCrcError  = 1 << 5;
+        /// Valid header received
+        const ValidHeader      = 1 << 4;
+        /// Finished transmitting
+        const TxDone           = 1 << 3;
+        /// CAD timed out
+        const CadDone          = 1 << 2;
+        /// FHSS hop time!
+        const FhssChangeChannel  = 1 << 1;
+        /// Signal detected during CAD
+        const CadDetected      = 1 << 0;
+    }
 }
-impl<'a> Peripherals<'a> {
-    #[doc = r" Grants access to all the peripherals"]
-    pub unsafe fn all() -> Self {
-        Peripherals {
-            TIMER0: &*TIMER0.get(),
-        }
+
+bitflags!{
+    /// ModemConfig1 = 0x1d
+    pub struct ModemConfig1: u8 {
+        /// Signal bandwidth
+        const Bw3              = 1 << 7;
+        /// 0000 - 1001
+        const Bw2              = 1 << 6;
+        /// See Semtech datasheet p112
+        const Bw1              = 1 << 5;
+        const Bw0              = 1 << 4;
+        /// Coding rate
+        const CodingRate2      = 1 << 3;
+        /// 001 - 100
+        const CodingRate1      = 1 << 2;
+        /// See Semtech datasheet p112
+        const CodingRate0      = 1 << 1;
+        /// Implicit header mode, 1=on 0=off
+        const ImplicitHeaderModeOn  = 1 << 0;
+    }
+}
+
+bitflags!{
+    /// ModemConfig2 = 0x1e
+    pub struct ModemConfig2: u8 {
+        /// Spreading factor
+        const SpreadingFactor3  = 1 << 7;
+        /// 6-12
+        const SpreadingFactor2  = 1 << 6;
+        /// See Semtech datasheet p113
+        const SpreadingFactor1  = 1 << 5;
+        const SpreadingFactor0  = 1 << 4;
+        /// 0=single packet 1=continuous
+        const TxContinuousMode  = 1 << 3;
+        /// Payload CRC checking on receive
+        const RxPayloadCrcOn   = 1 << 2;
+        /// RX timeout most significant bit
+        const SymbTimeout9     = 1 << 1;
+        const SymbTimeout8     = 1 << 0;
+    }
+}
+
+bitflags!{
+    /// ModemConfig3 = 0x26
+    pub struct ModemConfig3: u8 {
+        /// Enable when symbol length >16ms
+        const LowDataRateOptimize  = 1 << 3;
+        /// Enable AGC or manual LnaGain
+        const AgcAutoOn        = 1 << 2;
+    }
+}
+
+bitflags!{
+    /// DetectOptimize = 0x31
+    pub struct DetectOptimize: u8 {
+        /// LoRa detection optimize
+        const DetectionOptimize2  = 1 << 2;
+        /// Set to = 0x03 for SF 7-12
+        const DetectionOptimize1  = 1 << 1;
+        /// or = 0x05 for SF6
+        const DetectionOptimize0  = 1 << 0;
     }
 }

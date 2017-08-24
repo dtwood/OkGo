@@ -31,6 +31,14 @@ impl Spi {
         self.miso.set_alternate_function(AlternateFunction::AF0);
         self.mosi.set_alternate_function(AlternateFunction::AF0);
     }
+
+    pub fn transfer(&self, byte: u8) -> u8 {
+        unimplemented!();
+    }
+
+    pub fn write(&self, byte: u8) {
+        unimplemented!();
+    }
 }
 
 impl embedded_hal::Spi<u8> for Spi {

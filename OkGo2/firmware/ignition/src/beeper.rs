@@ -1,5 +1,5 @@
-use firmware_common::utils::get_millis;
 use f0::dac::Dac;
+use rtfm;
 
 pub struct Beeper {
     device: Dac,
@@ -62,8 +62,11 @@ impl Beeper {
         }
     }
 
-    pub fn do_beep(&mut self) {
-        let time = get_millis();
+    pub fn do_beep<M>(&mut self, t: &rtfm::Threshold, millis: &M)
+    where
+        M: rtfm::Resource<Data = u32>,
+    {
+        let time = **millis.borrow(t);
 
         if time - self.start > self.period {
             // Start a new beep with the high cycle

@@ -2,17 +2,18 @@ use core::mem;
 
 use md_5::Md5;
 use hmac::{Hmac, Mac};
-use firmware_common::{key, rfm};
+use firmware_common::key;
 use nb;
+use rtfm;
+use firmware_common::rfm::Radio;
 
-const REQ_PACKET_LEN: usize = 11;
-const CFM_PACKET_LEN: usize = 17;
+pub const REQ_PACKET_LEN: u8 = 11;
+const CFM_PACKET_LEN: u8 = 17;
 
 /// Radio tx power in dBm
 pub const RADIO_POWER_DBM: u8 = 10;
 
 pub struct ReqPacket {
-    pub rssi: u8,
     pub armed: bool,
     pub fire_ch1: bool,
     pub fire_ch2: bool,
@@ -37,8 +38,11 @@ pub struct CfmPacket {
 }
 
 /// Transmit a packet to control based on the contents of state
-pub fn transmit(packet: &CfmPacket) {
-    let mut buf = [0; CFM_PACKET_LEN];
+pub fn transmit<R>(t: &rtfm::Threshold, radio: &R, packet: &CfmPacket)
+where
+    R: rtfm::Resource<Data = Radio>,
+{
+    let mut buf = [0; CFM_PACKET_LEN as usize];
 
     buf[0] = packet.received_rssi;
     buf[1] = packet.battery_voltage;
@@ -53,25 +57,17 @@ pub fn transmit(packet: &CfmPacket) {
     buf[6] = packet.cont_ch4;
 
     /* Generate message HMAC signature */
-    let mut mac = Hmac::<Md5>::new(key::get_key());
-    mac.input(&buf[0..(CFM_PACKET_LEN - 10)]);
-    buf[(CFM_PACKET_LEN - 10)..].clone_from_slice(mac.result().code());
+    let mut mac = Hmac::<Md5>::new(&key::KEY);
+    mac.input(&buf[0..(CFM_PACKET_LEN as usize - 10)]);
+    buf[(CFM_PACKET_LEN as usize - 10)..].clone_from_slice(mac.result().code());
 
-    unsafe {
-        rfm::rfm_transmit(buf.as_ptr(), CFM_PACKET_LEN as u8);
-    }
+    radio.borrow(t).transmit(&buf);
 }
 
-pub fn make_ready() {
-    unsafe {
-        rfm::rfm_receive_async(REQ_PACKET_LEN as u8);
-    }
-}
-
-fn parse_packet(buf: [u8; REQ_PACKET_LEN]) -> Result<ReqPacket, ReceiveError> {
-    let mut mac = Hmac::<Md5>::new(key::get_key());
-    mac.input(&buf[0..(REQ_PACKET_LEN - 10)]);
-    if !mac.verify(&buf[(REQ_PACKET_LEN - 10)..]) {
+fn parse_packet(buf: [u8; REQ_PACKET_LEN as usize]) -> Result<ReqPacket, ReceiveError> {
+    let mut mac = Hmac::<Md5>::new(&key::KEY);
+    mac.input(&buf[0..(REQ_PACKET_LEN as usize - 10)]);
+    if !mac.verify(&buf[(REQ_PACKET_LEN as usize - 10)..]) {
         return Err(ReceiveError::InvalidHash);
     }
 
@@ -79,11 +75,9 @@ fn parse_packet(buf: [u8; REQ_PACKET_LEN]) -> Result<ReqPacket, ReceiveError> {
 
     let armed = command & (1 << 4) != 0;
     let beep_volume = (command >> 5) & 0x07;
-    let rssi = unsafe { rfm::rfm_getrssi() };
 
     Ok(if armed {
         ReqPacket {
-            rssi: rssi,
             beep_volume: beep_volume,
             beep_start: 0,
             armed: true,
@@ -94,7 +88,6 @@ fn parse_packet(buf: [u8; REQ_PACKET_LEN]) -> Result<ReqPacket, ReceiveError> {
         }
     } else {
         ReqPacket {
-            rssi: rssi,
             beep_volume: beep_volume,
             beep_start: 0,
             armed: false,
@@ -112,12 +105,20 @@ pub enum ReceiveError {
 }
 
 /// Retrieve and parse a packet received in async receive
-pub fn receive_async() -> nb::Result<ReqPacket, ReceiveError> {
-    if unsafe { rfm::rfm_packet_waiting() } {
-        let mut rx_buf: [u8; REQ_PACKET_LEN] = unsafe { mem::uninitialized() };
+pub fn receive_async<R>(t: &rtfm::Threshold, radio: &R) -> nb::Result<(u8, ReqPacket), ReceiveError>
+where
+    R: rtfm::Resource<Data = Radio>,
+{
+    let radio = radio.borrow(t);
 
-        if unsafe { rfm::rfm_packet_retrieve(rx_buf.as_mut_ptr(), REQ_PACKET_LEN as u8) } {
-            parse_packet(rx_buf).map_err(nb::Error::Other)
+    if radio.packet_waiting() {
+        let mut rx_buf: [u8; REQ_PACKET_LEN as usize] = unsafe { mem::uninitialized() };
+
+        if radio.packet_retrieve(&mut rx_buf) {
+            let rssi = radio.getrssi();
+            parse_packet(rx_buf)
+                .map(|p| (rssi, p))
+                .map_err(nb::Error::Other)
         } else {
             Err(nb::Error::Other(ReceiveError::ReceiveError))
         }

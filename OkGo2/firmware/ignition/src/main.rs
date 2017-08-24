@@ -110,9 +110,19 @@ fn init(p: init::Peripherals, r: init::Resources) {
     // Clock GPIOs, set pin modes
     io::init(&p, &r);
     // Initialise radio and local state variables, read stored config
-    r.RADIO.init(p.RCC, p.SPI1, rfm::Frf::Frf868, radio::RADIO_POWER_DBM);
+    r.RADIO
+        .init(p.RCC, p.SPI1, rfm::Frf::Frf868, radio::RADIO_POWER_DBM);
 
-    radio::make_ready();
+    r.RADIO.receive_async(radio::REQ_PACKET_LEN);
+
+    // /* 48MHz / 8 => 6,000,000 counts per second */
+    // systick_set_clocksource(STK_CSR_CLKSOURCE_AHB);
+    //
+    // /* 6,000,000/6000 = 1000 overflows per second - every 1ms one interrupt */
+    // /* SysTick interrupt every N clock pulses: set reload to N-1 */
+    // systick_set_reload(47999);
+    // // systick_interrupt_enable();
+    // systick_counter_enable();
 }
 
 fn idle() -> ! {
@@ -126,8 +136,8 @@ fn sys_tick(_t: &mut rtfm::Threshold, r: SYS_TICK::Resources) {
 }
 
 fn timer_tick(t: &mut rtfm::Threshold, r: TIM2_IRQ::Resources) {
-    match radio::receive_async() {
-        Ok(packet) => {
+    match radio::receive_async(t, r.RADIO) {
+        Ok((rssi, packet)) => {
             **r.LAST_PACKET = **r.MILLIS.borrow(t);
 
             r.BEEPER.set_state(
@@ -162,21 +172,25 @@ fn timer_tick(t: &mut rtfm::Threshold, r: TIM2_IRQ::Resources) {
                 r.LED_ARM.clear();
             }
 
-            utils::delay_ms(t, r.MILLIS, 10);
-            radio::transmit(&radio::CfmPacket {
-                received_rssi: packet.rssi,
-                battery_voltage: utils::adc_to_battery_voltage(r.BATT_MON.read()),
-                armed: packet.armed,
-                fire_ch1: packet.fire_ch1,
-                fire_ch2: packet.fire_ch2,
-                fire_ch3: packet.fire_ch3,
-                fire_ch4: packet.fire_ch4,
-                cont_ch1: utils::adc_to_ohms(r.CONT_CH1.read()),
-                cont_ch2: utils::adc_to_ohms(r.CONT_CH2.read()),
-                cont_ch3: utils::adc_to_ohms(r.CONT_CH3.read()),
-                cont_ch4: utils::adc_to_ohms(r.CONT_CH4.read()),
-            });
-            radio::make_ready();
+            utils::delay_ms(t, &r.MILLIS, 10);
+            radio::transmit(
+                t,
+                r.RADIO,
+                &radio::CfmPacket {
+                    received_rssi: rssi,
+                    battery_voltage: utils::adc_to_battery_voltage(r.BATT_MON.read()),
+                    armed: packet.armed,
+                    fire_ch1: packet.fire_ch1,
+                    fire_ch2: packet.fire_ch2,
+                    fire_ch3: packet.fire_ch3,
+                    fire_ch4: packet.fire_ch4,
+                    cont_ch1: utils::adc_to_ohms(r.CONT_CH1.read()),
+                    cont_ch2: utils::adc_to_ohms(r.CONT_CH2.read()),
+                    cont_ch3: utils::adc_to_ohms(r.CONT_CH3.read()),
+                    cont_ch4: utils::adc_to_ohms(r.CONT_CH4.read()),
+                },
+            );
+            r.RADIO.receive_async(radio::REQ_PACKET_LEN);
 
             r.LED_GREEN.toggle();
             r.LED_YELLOW.toggle();
@@ -203,7 +217,7 @@ fn timer_tick(t: &mut rtfm::Threshold, r: TIM2_IRQ::Resources) {
         }
     }
 
-    r.BEEPER.do_beep();
+    r.BEEPER.do_beep(t, &r.MILLIS);
 }
 
 #[lang = "eh_personality"]

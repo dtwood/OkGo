@@ -1,7 +1,9 @@
+#![feature(asm)]
 #![feature(const_fn)]
 #![no_std]
 
-
+#[macro_use]
+extern crate bitflags;
 extern crate f0;
 extern crate hmac;
 extern crate md_5;
