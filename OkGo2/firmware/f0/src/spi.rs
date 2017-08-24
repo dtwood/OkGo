@@ -1,6 +1,7 @@
 use gpio::{AlternateFunction, Gpio, Mode, PullUpDown};
 use embedded_hal;
 use nb;
+use stm32f0xx;
 
 #[derive(Debug)]
 pub struct Spi {
@@ -18,7 +19,11 @@ pub enum Error {
 }
 
 impl Spi {
-    pub fn setup(&self) {
+    pub fn setup_spi1(&self, spi1: &stm32f0xx::SPI1) {
+        self.setup_generic();
+    }
+
+    fn setup_generic(&self) {
         self.sck.setup(Mode::Alternate, PullUpDown::None);
         self.miso.setup(Mode::Alternate, PullUpDown::None);
         self.mosi.setup(Mode::Alternate, PullUpDown::None);

@@ -105,67 +105,6 @@ void _rfm_bulkread(uint8_t address, uint8_t *buffer, uint8_t len)
 
 
 /************* External function definitions ***************/
-/* Initialise the RFM95W.  Well, mainly the SPI peripheral. */
-void rfm_initialise(uint32_t spi_periph, uint32_t nss_port, uint32_t nss_pin)
-{
-    uint8_t RegOpMode, RegModemConfig1, RegModemConfig2;
-
-    /* Store the boards specifics for later use */
-    rfm_spi = spi_periph;
-    rfm_nss_port = nss_port;
-    rfm_nss = nss_pin;
-
-    /* Pinmodes are setup in (ignition|control)_radio.c */
-
-    /* Initialise SPI peripheral */
-    spi_reset(rfm_spi);
-    spi_disable_crc(rfm_spi);
-    spi_init_master(rfm_spi,
-                    SPI_CR1_BAUDRATE_FPCLK_DIV_64, /* Slightly under 1MHz */
-                    SPI_CR1_CPOL_CLK_TO_0_WHEN_IDLE, /* ??? */
-                    SPI_CR1_CPHA_CLK_TRANSITION_1,
-                    SPI_CR1_CRCL_8BIT, /* DFF/CRC length */
-                    SPI_CR1_MSBFIRST); /* MSB first */
-
-    /* Manual NSS handling: */
-    spi_enable_software_slave_management(rfm_spi);
-    spi_set_nss_high(rfm_spi);
-    gpio_set(rfm_nss_port, rfm_nss);
-
-    spi_set_data_size(rfm_spi, 0x07); /* 8-bit mode = 0b0111 */
-    spi_fifo_reception_threshold_8bit(rfm_spi); /* 8-bit rx-length */
-
-    spi_enable(rfm_spi);
-
-    /* Wait for chip to warm up */
-    delay_ms(10);
-
-    /* Check we're in sleep mode */
-    _rfm_setmode(RFM_MODE_SLEEP);
-    RegOpMode = _rfm_readreg(RFM_RegOpMode);
-    /* Activate LoRa! */
-    RegOpMode |= RFM_LongRangeMode;
-    _rfm_writereg(RFM_RegOpMode, RegOpMode);
-
-    /* Set bandwidth to 125kHz -> 0111 */
-    RegModemConfig1 = RFM_Bw2 | RFM_Bw1 | RFM_Bw0;
-    /* Set coding rate to 4/8 -> 100 */
-    RegModemConfig1 |= RFM_CodingRate2;
-    /* Implicit header mode */
-    RegModemConfig1 |= RFM_ImplicitHeaderModeOn;
-    /* Write config: */
-    _rfm_writereg(RFM_RegModemConfig1, RegModemConfig1);
-
-    /* Set SF9 = 256 chips/symbol */
-    RegModemConfig2 = RFM_SpreadingFactor3;
-    /* Enable CRCs: */
-    RegModemConfig2 |= RFM_RxPayloadCrcOn;
-    /* Write config: */
-    _rfm_writereg(RFM_RegModemConfig2, RegModemConfig2);
-
-
-}
-
 /* Set the RFM95W centre frequency using an FRF register value */
 void rfm_setfreq(uint32_t frf)
 {

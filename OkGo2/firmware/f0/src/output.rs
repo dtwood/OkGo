@@ -2,18 +2,6 @@ use gpio::{Gpio, Mode, Port, PullUpDown};
 use stm32f0xx;
 use bare_metal::CriticalSection;
 
-#[macro_export]
-macro_rules! output {
-    ($id: ident, $port: ident, $pin: expr) => {
-        pub static $id: $crate::output::Output = $crate::output::Output {
-            gpio: $crate::gpio::Gpio {
-                port: $crate::gpio::Port::$port,
-                pin: $pin,
-            },
-        };
-    }
-}
-
 #[derive(Debug)]
 pub struct Output {
     pub gpio: Gpio,

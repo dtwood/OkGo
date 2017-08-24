@@ -3,33 +3,13 @@ use core::mem;
 use md_5::Md5;
 use hmac::{Hmac, Mac};
 use firmware_common::{key, rfm};
-use stm32f0xx;
-use f0::gpio::{Gpio, Port};
-use f0::spi::Spi;
 use nb;
 
 const REQ_PACKET_LEN: usize = 11;
 const CFM_PACKET_LEN: usize = 17;
 
 /// Radio tx power in dBm
-const RADIO_POWER_DBM: u8 = 10;
-
-output!(RFM_NSS, A, 15);
-
-static RFM_SPI: Spi = Spi {
-    sck: Gpio {
-        port: Port::B,
-        pin: 3,
-    },
-    miso: Gpio {
-        port: Port::B,
-        pin: 4,
-    },
-    mosi: Gpio {
-        port: Port::B,
-        pin: 5,
-    },
-};
+pub const RADIO_POWER_DBM: u8 = 10;
 
 pub struct ReqPacket {
     pub rssi: u8,
@@ -54,30 +34,6 @@ pub struct CfmPacket {
     pub cont_ch2: u8,
     pub cont_ch3: u8,
     pub cont_ch4: u8,
-}
-
-pub fn init(p: &::init::Peripherals) {
-    // Clock SPI1 peripheral and setup GPIOs appropriately:
-    // NSS, SCK, MOSI, RESET are outputs,
-    // MISO is input.
-    // SPI setup is done in rfm95w.c
-    p.RCC.apb2enr.write(|w| w.spi1en().set_bit());
-
-    // Make sure NSS doesn't blip when we enable it:
-    RFM_NSS.clear();
-    RFM_NSS.setup();
-    RFM_SPI.setup();
-
-    // Run RFM95W initialization
-    unsafe {
-        rfm::rfm_initialise(
-            stm32f0xx::SPI1.get() as u32,
-            RFM_NSS.gpio.port as u32,
-            RFM_NSS.gpio.pin,
-        );
-        rfm::rfm_setfreq(rfm::Frf::Frf868 as u32);
-        rfm::rfm_setpower(RADIO_POWER_DBM);
-    }
 }
 
 /// Transmit a packet to control based on the contents of state

@@ -7,7 +7,6 @@
 
 extern crate bare_metal;
 extern crate cortex_m_rtfm as rtfm;
-#[macro_use]
 extern crate f0;
 extern crate firmware_common;
 extern crate hmac;
@@ -22,10 +21,12 @@ mod utils;
 
 use rtfm::app;
 use f0::output::Output;
-use f0::gpio::Port;
+use f0::gpio::{Gpio, Port};
 use f0::adc::Adc;
 use f0::dac::Dac;
+use f0::spi::Spi;
 use rtfm::Resource;
+use firmware_common::rfm;
 
 /// Drop delay in ms
 const PACKET_DROP_DELAY: u32 = 5000;
@@ -55,6 +56,24 @@ app! {
         static CONT_CH2: Adc = Adc::new(Port::A, 7, 7);
         static CONT_CH3: Adc = Adc::new(Port::A, 6, 6);
         static CONT_CH4: Adc = Adc::new(Port::A, 5, 5);
+
+        static RADIO: firmware_common::rfm::Radio = firmware_common::rfm::Radio::new(
+            Output::new(Port::A, 15),
+            Spi {
+                sck: Gpio {
+                    port: Port::B,
+                    pin: 3,
+                },
+                miso: Gpio {
+                    port: Port::B,
+                    pin: 4,
+                },
+                mosi: Gpio {
+                    port: Port::B,
+                    pin: 5,
+                },
+            }
+        );
     },
 
     tasks: {
@@ -71,6 +90,7 @@ app! {
                 LED_GREEN, LED_YELLOW, LED_ARM, LED_DISARM, // Status LEDs
                 UPSTREAM_RELAY, FIRE_CH1, FIRE_CH2, FIRE_CH3, FIRE_CH4, // Firing Channels
                 ADC, BATT_MON, RELAY_SENSE, CONT_CH1, CONT_CH2, CONT_CH3, CONT_CH4, // ADCs
+                RADIO, // Radio
             ],
         },
     }
@@ -90,7 +110,7 @@ fn init(p: init::Peripherals, r: init::Resources) {
     // Clock GPIOs, set pin modes
     io::init(&p, &r);
     // Initialise radio and local state variables, read stored config
-    radio::init(&p);
+    r.RADIO.init(p.RCC, p.SPI1, rfm::Frf::Frf868, radio::RADIO_POWER_DBM);
 
     radio::make_ready();
 }
