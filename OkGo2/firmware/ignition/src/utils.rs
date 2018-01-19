@@ -55,6 +55,6 @@ where
 pub fn get_millis<Millis>(t: &mut rtfm::Threshold, millis: &Millis) -> u32
 where
     Millis: rtfm::Resource<Data = u32>,
- {
-    millis.claim(t, |millis, _t| **millis)
+{
+    millis.claim(t, |millis, _t| *millis)
 }

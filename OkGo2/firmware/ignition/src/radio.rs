@@ -1,11 +1,12 @@
 use core::mem;
 
-use md_5::Md5;
+use md5::Md5;
 use hmac::{Hmac, Mac};
 use firmware_common::key;
 use nb;
-use rtfm;
-use firmware_common::rfm::Radio;
+use rfm95w::Rfm95w;
+use embedded_hal::blocking::spi;
+use embedded_hal::digital::OutputPin;
 
 pub const REQ_PACKET_LEN: u8 = 11;
 const CFM_PACKET_LEN: u8 = 17;
@@ -37,37 +38,10 @@ pub struct CfmPacket {
     pub cont_ch4: u8,
 }
 
-/// Transmit a packet to control based on the contents of state
-pub fn transmit<R>(t: &rtfm::Threshold, radio: &R, packet: &CfmPacket)
-where
-    R: rtfm::Resource<Data = Radio>,
-{
-    let mut buf = [0; CFM_PACKET_LEN as usize];
-
-    buf[0] = packet.received_rssi;
-    buf[1] = packet.battery_voltage;
-
-    buf[2] = ((packet.armed as u8) << 4) | ((packet.fire_ch4 as u8) << 3) |
-        ((packet.fire_ch3 as u8) << 2) | ((packet.fire_ch2 as u8) << 1) |
-        (packet.fire_ch1 as u8);
-
-    buf[3] = packet.cont_ch1;
-    buf[4] = packet.cont_ch2;
-    buf[5] = packet.cont_ch3;
-    buf[6] = packet.cont_ch4;
-
-    /* Generate message HMAC signature */
-    let mut mac = Hmac::<Md5>::new(&key::KEY);
-    mac.input(&buf[0..(CFM_PACKET_LEN as usize - 10)]);
-    buf[(CFM_PACKET_LEN as usize - 10)..].clone_from_slice(mac.result().code());
-
-    radio.borrow(t).transmit(&buf);
-}
-
 fn parse_packet(buf: [u8; REQ_PACKET_LEN as usize]) -> Result<ReqPacket, ReceiveError> {
-    let mut mac = Hmac::<Md5>::new(&key::KEY);
+    let mut mac = Hmac::<Md5>::new(&key::KEY).unwrap();
     mac.input(&buf[0..(REQ_PACKET_LEN as usize - 10)]);
-    if !mac.verify(&buf[(REQ_PACKET_LEN as usize - 10)..]) {
+    if mac.verify(&buf[(REQ_PACKET_LEN as usize - 10)..]).is_err() {
         return Err(ReceiveError::InvalidHash);
     }
 
@@ -99,30 +73,64 @@ fn parse_packet(buf: [u8; REQ_PACKET_LEN as usize]) -> Result<ReqPacket, Receive
     })
 }
 
+pub trait RadioExt {
+    /// Transmit a packet to control based on the contents of state
+    fn transmit_packet(&mut self, packet: &CfmPacket);
+
+    /// Retrieve and parse a packet received in async receive
+    fn receive_packet(&mut self) -> nb::Result<(u8, ReqPacket), ReceiveError>;
+}
+
+impl<SPI, NSS, E> RadioExt for Rfm95w<SPI, NSS>
+where
+    SPI: spi::Transfer<u8, Error = E> + spi::Write<u8, Error = E> + Send,
+    NSS: OutputPin + Send,
+    E: ::core::fmt::Debug,
+{
+    /// Transmit a packet to control based on the contents of state
+    fn transmit_packet(&mut self, packet: &CfmPacket) {
+        let mut buf = [0; CFM_PACKET_LEN as usize];
+
+        buf[0] = packet.received_rssi;
+        buf[1] = packet.battery_voltage;
+
+        buf[2] = ((packet.armed as u8) << 4) | ((packet.fire_ch4 as u8) << 3)
+            | ((packet.fire_ch3 as u8) << 2) | ((packet.fire_ch2 as u8) << 1)
+            | (packet.fire_ch1 as u8);
+
+        buf[3] = packet.cont_ch1;
+        buf[4] = packet.cont_ch2;
+        buf[5] = packet.cont_ch3;
+        buf[6] = packet.cont_ch4;
+
+        /* Generate message HMAC signature */
+        let mut mac = Hmac::<Md5>::new(&key::KEY).unwrap();
+        mac.input(&buf[0..(CFM_PACKET_LEN as usize - 10)]);
+        buf[(CFM_PACKET_LEN as usize - 10)..].clone_from_slice(&mac.result().code());
+
+        self.transmit(&buf).unwrap();
+    }
+
+    /// Retrieve and parse a packet received in async receive
+    fn receive_packet(&mut self) -> nb::Result<(u8, ReqPacket), ReceiveError> {
+        if self.packet_waiting().unwrap() {
+            let mut rx_buf: [u8; REQ_PACKET_LEN as usize] = unsafe { mem::uninitialized() };
+
+            if self.packet_retrieve(&mut rx_buf).unwrap() {
+                let rssi = self.getrssi().unwrap();
+                parse_packet(rx_buf)
+                    .map(|p| (rssi, p))
+                    .map_err(nb::Error::Other)
+            } else {
+                Err(nb::Error::Other(ReceiveError::ReceiveError))
+            }
+        } else {
+            Err(nb::Error::WouldBlock)
+        }
+    }
+}
+
 pub enum ReceiveError {
     ReceiveError,
     InvalidHash,
-}
-
-/// Retrieve and parse a packet received in async receive
-pub fn receive_async<R>(t: &rtfm::Threshold, radio: &R) -> nb::Result<(u8, ReqPacket), ReceiveError>
-where
-    R: rtfm::Resource<Data = Radio>,
-{
-    let radio = radio.borrow(t);
-
-    if radio.packet_waiting() {
-        let mut rx_buf: [u8; REQ_PACKET_LEN as usize] = unsafe { mem::uninitialized() };
-
-        if radio.packet_retrieve(&mut rx_buf) {
-            let rssi = radio.getrssi();
-            parse_packet(rx_buf)
-                .map(|p| (rssi, p))
-                .map_err(nb::Error::Other)
-        } else {
-            Err(nb::Error::Other(ReceiveError::ReceiveError))
-        }
-    } else {
-        Err(nb::Error::WouldBlock)
-    }
 }

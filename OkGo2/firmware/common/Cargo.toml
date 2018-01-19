@@ -5,7 +5,8 @@ authors = ["david"]
 
 [dependencies]
 bitflags = "*"
-f0 = { path = "../f0" }
 hmac = "*"
 md-5 = "*"
-stm32f0xx = { path = "../stm32f0xx" }
+stm32f0xx = { git = "https://github.com/dtwood/stm32f0xx" }
+stm32f0xx-hal = { git = "https://github.com/dtwood/stm32f0xx" }
+rfm95w = { path = "../rfm95w" }

@@ -4,15 +4,13 @@
 
 #[macro_use]
 extern crate bitflags;
-extern crate f0;
 extern crate hmac;
-extern crate md_5;
+extern crate md5;
+pub extern crate rfm95w as rfm;
 extern crate stm32f0xx;
 
 pub mod adc;
-pub mod md5;
+pub mod md5_helpers;
 pub mod hmac_mod;
 pub mod key;
-pub mod rfm;
 pub mod utils;
-pub mod radio_reg;

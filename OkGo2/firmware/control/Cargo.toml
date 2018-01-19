@@ -7,12 +7,12 @@ authors = [
 ]
 
 [dependencies]
-libopencm3-sys = { path = "../libopencm3-sys" }
-firmware_common = { path = "../common" }
-rlibc = "*"
-f0 = { path = "../f0" }
 bare-metal = "*"
-stm32f0xx = { path = "../stm32f0xx" }
-md-5 = "*"
+firmware_common = { path = "../common" }
 hmac = "*"
-nb = { git = "https://github.com/japaric/nb.git" }
+libopencm3-sys = { path = "../libopencm3-sys" }
+md-5 = "*"
+nb = "*"
+rlibc = "*"
+stm32f0xx = { git = "https://github.com/dtwood/stm32f0xx" }
+stm32f0xx-hal = { git = "https://github.com/dtwood/stm32f0xx-hal" }

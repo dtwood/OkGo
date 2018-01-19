@@ -1,5 +1,3 @@
-use f0;
-
 pub fn init(p: &::init::Peripherals, r: &::init::Resources) {
     // Clock all GPIO peripherals
     p.RCC.ahbenr.write(|w| {
@@ -23,7 +21,7 @@ pub fn init(p: &::init::Peripherals, r: &::init::Resources) {
     });
 
     // Analog inputs
-    f0::adc::set_up_adc();
+    // f0::adc::set_up_adc();
     r.BATT_MON.setup();
     r.RELAY_SENSE.setup();
     r.CONT_CH1.setup();

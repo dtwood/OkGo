@@ -1,95 +1,129 @@
-use stm32f0xx;
-use f0::output::OutputT;
-use f0::gpio::GpioT;
+use embedded_hal::digital::OutputPin;
+use f0;
+use f0::gpio::Output;
+use f0::gpio::PushPull;
 
 pub trait Led {
-    type GPIO;
-    type RCC;
-
-    fn init(&self, gpio: &Self::GPIO, rcc: &Self::RCC);
-    fn on(&self, gpio: &Self::GPIO);
-    fn off(&self, gpio: &Self::GPIO);
-    fn toggle(&self, gpio: &Self::GPIO);
-    fn set_bool(&self, gpio: &Self::GPIO, value: bool);
+    fn on(&mut self);
+    fn off(&mut self);
+    fn toggle(&mut self);
+    fn set_bool(&mut self, value: bool);
 }
 
-pub struct LedB(u32);
-impl Led for LedB {
-    type GPIO = stm32f0xx::GPIOB;
-    type RCC = stm32f0xx::RCC;
+pub type LedGreen = f0::gpio::gpiob::PB13<Output<PushPull>>;
+pub type LedYellow = f0::gpio::gpiob::PB12<Output<PushPull>>;
+pub type LedArm = f0::gpio::gpiob::PB8<Output<PushPull>>;
+pub type LedDisarm = f0::gpio::gpiob::PB9<Output<PushPull>>;
 
-    fn init(&self, gpio: &Self::GPIO, rcc: &Self::RCC) {
-        gpio.init(rcc);
-        gpio.set_output(self.0);
+pub trait LedPin {}
+
+impl LedPin for LedGreen {}
+impl LedPin for LedYellow {}
+impl LedPin for LedArm {}
+impl LedPin for LedDisarm {}
+
+impl<T> Led for T
+where
+    T: OutputPin + LedPin,
+{
+    fn on(&mut self) {
+        self.set_high();
     }
-    fn on(&self, gpio: &Self::GPIO) {
-        gpio.high(self.0)
+    fn off(&mut self) {
+        self.set_low();
     }
-    fn off(&self, gpio: &Self::GPIO) {
-        gpio.low(self.0)
+    fn toggle(&mut self) {
+        if self.is_high() {
+            self.set_low();
+        } else {
+            self.set_high();
+        }
     }
-    fn toggle(&self, gpio: &Self::GPIO) {
-        gpio.toggle(self.0);
-    }
-    fn set_bool(&self, gpio: &Self::GPIO, value: bool) {
-        gpio.set_bool(self.0, value);
+    fn set_bool(&mut self, value: bool) {
+        if value {
+            self.set_high();
+        } else {
+            self.set_low();
+        }
     }
 }
-
-pub struct RelayA(u32);
-pub struct RelayB(u32);
 
 pub trait Relay {
-    type GPIO: OutputT + GpioT;
+    fn close(&mut self);
+    fn open(&mut self);
+}
 
-    fn pin(&self) -> u32;
+pub type RelayUpstream = f0::gpio::gpioa::PA10<Output<PushPull>>;
+pub type RelayChannel1 = f0::gpio::gpioa::PA9<Output<PushPull>>;
+pub type RelayChannel2 = f0::gpio::gpioa::PA8<Output<PushPull>>;
+pub type RelayChannel3 = f0::gpio::gpiob::PB15<Output<PushPull>>;
+pub type RelayChannel4 = f0::gpio::gpiob::PB14<Output<PushPull>>;
 
-    fn init(&self, gpio: &Self::GPIO, rcc: &stm32f0xx::RCC) {
-        gpio.init(rcc);
-        gpio.set_output(self.pin());
+pub trait RelayPin {}
+
+impl RelayPin for RelayUpstream {}
+impl RelayPin for RelayChannel1 {}
+impl RelayPin for RelayChannel2 {}
+impl RelayPin for RelayChannel3 {}
+impl RelayPin for RelayChannel4 {}
+
+impl<T> Relay for T
+where
+    T: OutputPin + RelayPin,
+{
+    fn close(&mut self) {
+        self.set_high();
     }
-    fn close(&self, gpio: &Self::GPIO) {
-        gpio.high(self.pin())
-    }
-    fn open(&self, gpio: &Self::GPIO) {
-        gpio.low(self.pin())
-    }
-    fn set_bool(&self, gpio: &Self::GPIO, value: bool) {
-        gpio.set_bool(self.pin(), value);
+    fn open(&mut self) {
+        self.set_low();
     }
 }
 
-impl Relay for RelayA {
-    type GPIO = stm32f0xx::GPIOA;
-
-    fn pin(&self) -> u32 {
-        self.0
-    }
-}
-
-impl Relay for RelayB {
-    type GPIO = stm32f0xx::GPIOB;
-
-    fn pin(&self) -> u32 {
-        self.0
-    }
-}
-
-pub mod relays {
-    use super::*;
-
-    pub static UPSTREAM: RelayA = RelayA(10);
-    pub static CHANNEL_1: RelayA = RelayA(9);
-    pub static CHANNEL_2: RelayA = RelayA(8);
-    pub static CHANNEL_3: RelayB = RelayB(15);
-    pub static CHANNEL_4: RelayB = RelayB(14);
-}
-
-pub mod leds {
-    use super::*;
-
-    pub static GREEN: LedB = LedB(13);
-    pub static YELLOW: LedB = LedB(12);
-    pub static ARM: LedB = LedB(8);
-    pub static DISARM: LedB = LedB(9);
-}
+// pub struct RelayA(u32);
+// pub struct RelayB(u32);
+//
+// pub trait Relay {
+//     type GPIO: OutputT + GpioT;
+//
+//     fn pin(&self) -> u32;
+//
+//     fn init(&self, gpio: &Self::GPIO, rcc: &stm32f0xx::RCC) {
+//         gpio.init(rcc);
+//         gpio.set_output(self.pin());
+//     }
+//     fn close(&self, gpio: &Self::GPIO) {
+//         gpio.high(self.pin())
+//     }
+//     fn open(&self, gpio: &Self::GPIO) {
+//         gpio.low(self.pin())
+//     }
+//     fn set_bool(&self, gpio: &Self::GPIO, value: bool) {
+//         gpio.set_bool(self.pin(), value);
+//     }
+// }
+//
+// impl Relay for RelayA {
+//     type GPIO = stm32f0xx::GPIOA;
+//
+//     fn pin(&self) -> u32 {
+//         self.0
+//     }
+// }
+//
+// impl Relay for RelayB {
+//     type GPIO = stm32f0xx::GPIOB;
+//
+//     fn pin(&self) -> u32 {
+//         self.0
+//     }
+// }
+//
+// pub mod relays {
+//     use super::*;
+//
+// }
+//
+// pub mod leds {
+//     use super::*;
+//
+// }

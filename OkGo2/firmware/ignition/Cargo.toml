@@ -10,12 +10,11 @@ authors = [
 bare-metal = "*"
 cortex-m-rt = { version = "*", features = ["abort-on-panic"] }
 cortex-m-rtfm = "*"
-f0 = { path = "../f0" }
+embedded-hal = "*"
 firmware_common = { path = "../common" }
 hmac = "*"
 md-5 = "*"
 nb = { git = "https://github.com/japaric/nb.git" }
-stm32f0xx = { path = "../stm32f0xx", features = ["rt"] }
-
-[build-dependencies]
-gcc = "*"
+rfm95w = { path = "../rfm95w" }
+stm32f0xx = { git = "https://github.com/dtwood/stm32f0xx", features = ["rt"] }
+stm32f0xx-hal = { path = "https://github.com/dtwood/stm32f0xx-hal" }

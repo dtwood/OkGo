@@ -2,7 +2,7 @@ use core::ptr::copy_nonoverlapping;
 use core::slice;
 
 use hmac::{Hmac, Mac};
-use md_5::Md5;
+use md5::Md5;
 
 /// Generate an HMAC-MD5 signature for *message, length message_len, with
 /// key *key, length key_len, and store the result in the 16-byte buffer at
@@ -15,7 +15,7 @@ pub unsafe extern "C" fn hmac_md5(
     key_len: u8,
     hash: *mut u8,
 ) {
-    let mut mac = Hmac::<Md5>::new(slice::from_raw_parts(key, key_len.into()));
+    let mut mac = Hmac::<Md5>::new(slice::from_raw_parts(key, key_len.into())).unwrap();
     mac.input(slice::from_raw_parts(message, message_len.into()));
 
     let result = mac.result();
@@ -33,7 +33,7 @@ pub unsafe extern "C" fn hmac_md5_80(
     key_len: u8,
     hash: *mut u8,
 ) {
-    let mut mac = Hmac::<Md5>::new(slice::from_raw_parts(key, key_len.into()));
+    let mut mac = Hmac::<Md5>::new(slice::from_raw_parts(key, key_len.into())).unwrap();
     mac.input(slice::from_raw_parts(message, message_len.into()));
 
     let result = mac.result();
