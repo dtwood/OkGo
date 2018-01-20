@@ -16,7 +16,7 @@ extern crate rfm95w;
 extern crate stm32f0xx;
 extern crate stm32f0xx_hal as f0;
 
-// mod beeper;
+mod beeper;
 mod board;
 mod radio;
 // mod io;
@@ -28,6 +28,7 @@ use f0::prelude::*;
 use firmware_common::rfm;
 use output_pin_ext::OutputPinExt;
 use radio::RadioExt;
+use rfm95w::Rfm95w;
 use rtfm::Threshold;
 use rtfm::app;
 
@@ -38,7 +39,7 @@ app! {
     device: stm32f0xx,
 
     resources: {
-        // static BEEPER: beeper::Beeper = beeper::Beeper::new();
+        static BEEPER: beeper::Beeper<f0::analog::Dac<stm32f0xx::DAC>, board::Beeper>;
         static LAST_PACKET: u32 = 0;
         static MILLIS: u32 = 0;
 
@@ -61,7 +62,7 @@ app! {
         static CONT_CH3: board::ContCh3;
         static CONT_CH4: board::ContCh4;
 
-        static RADIO: board::Radio;
+        static RADIO: Rfm95w<board::RadioSpi, board::RadioNss>;
     },
 
     tasks: {
@@ -78,7 +79,8 @@ app! {
                 LED_GREEN, LED_YELLOW, LED_ARM, LED_DISARM,
                 RELAY_UPSTREAM, RELAY_CHANNEL_1, RELAY_CHANNEL_2, RELAY_CHANNEL_3, RELAY_CHANNEL_4,
                 ADC, BATT_MON, RELAY_SENSE, CONT_CH1, CONT_CH2, CONT_CH3, CONT_CH4, // ADCs
-                RADIO, // Radio
+                RADIO,
+                BEEPER,
             ],
         },
     }
@@ -125,8 +127,6 @@ fn init(p: init::Peripherals, _r: init::Resources) -> init::LateResources {
 
     radio.receive_async(radio::REQ_PACKET_LEN).unwrap();
 
-    // r.BEEPER.init(p.DAC, Port::A, 4);
-
     // Upstream relay and firing channels, default all set_low
 
     // /* 48MHz / 8 => 6,000,000 counts per second */
@@ -141,6 +141,10 @@ fn init(p: init::Peripherals, _r: init::Resources) -> init::LateResources {
     init::LateResources {
         RADIO: radio,
         ADC: f0::analog::Adc::adc(p.device.ADC),
+        BEEPER: beeper::Beeper::new(
+            f0::analog::Dac::dac(p.device.DAC),
+            gpioa.pa4.into_analog(&mut gpioa.moder),
+        ),
         BATT_MON: gpioa.pa0.into_analog(&mut gpioa.moder),
         RELAY_SENSE: gpiob.pb1.into_analog(&mut gpiob.moder),
         CONT_CH1: gpiob.pb0.into_analog(&mut gpiob.moder),
@@ -220,17 +224,17 @@ fn timer_tick(t: &mut rtfm::Threshold, mut r: TIM2_IRQ::Resources) {
         Ok((rssi, packet)) => {
             *r.LAST_PACKET = utils::get_millis(t, &r.MILLIS);
 
-            // r.BEEPER.set_rate(if packet.armed {
-            //     beeper::Rate::Fast
-            // } else {
-            //     beeper::Rate::Slow
-            // });
-            // r.BEEPER.set_volume(match packet.beep_volume {
-            //     0 => beeper::Volume::Silent,
-            //     1 => beeper::Volume::Low,
-            //     2 => beeper::Volume::Loud,
-            //     _ => beeper::Volume::Medium,
-            // });
+            r.BEEPER.set_rate(if packet.armed {
+                beeper::Rate::Fast
+            } else {
+                beeper::Rate::Slow
+            });
+            r.BEEPER.set_volume(match packet.beep_volume {
+                0 => beeper::Volume::Silent,
+                1 => beeper::Volume::Low,
+                2 => beeper::Volume::Loud,
+                _ => beeper::Volume::Medium,
+            });
 
             if packet.armed {
                 fire(

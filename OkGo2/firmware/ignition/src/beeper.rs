@@ -1,10 +1,9 @@
-// use f0::dac::Dac;
-use rtfm;
-use f0::gpio::Port;
-use stm32f0xx;
+use f0::analog_hal::Dac;
 
 #[derive(Copy, Clone, Debug)]
-pub struct Beeper {
+pub struct Beeper<DAC, PIN> {
+    dac: DAC,
+    pin: PIN,
     start: u32,
     period: u32,
     len: u32,
@@ -31,19 +30,19 @@ pub enum Volume {
     Loud,
 }
 
-impl Beeper {
-    pub const fn new() -> Beeper {
+impl<DAC, PIN> Beeper<DAC, PIN>
+where
+    for<'a> (&'a mut DAC, &'a mut PIN): Dac<u8>,
+{
+    pub fn new(dac: DAC, pin: PIN) -> Beeper<DAC, PIN> {
         Beeper {
+            dac,
+            pin,
             start: 0,
             period: 1000,
             len: 50,
             volume: 255,
         }
-    }
-
-    pub fn init(&self, dac: &stm32f0xx::DAC, port: Port, pin: u32) {
-        dac.init(port, pin);
-        dac.cr.write(|w| w.ten1().clear_bit().en1().set_bit());
     }
 
     pub fn set_rate(&mut self, rate: Rate) {
@@ -68,21 +67,15 @@ impl Beeper {
         }
     }
 
-    pub fn do_beep<M, DAC>(&mut self, t: &mut rtfm::Threshold, millis: &M, dac: &DAC)
-    where
-        M: rtfm::Resource<Data = u32>,
-        DAC: rtfm::Resource<Data = stm32f0xx::DAC>,
-    {
-        let time = **millis.borrow(t);
-
-        if time - self.start > self.period {
+    pub fn do_beep(&mut self, millis: u32) {
+        if millis - self.start > self.period {
             // Start a new beep with the high cycle
-            self.start = time;
+            self.start = millis;
 
-            dac.claim(t, |dac, _| dac.set_right_u8(self.volume));
-        } else if time - self.start > self.len {
+            (&mut self.dac, &mut self.pin).set(self.volume);
+        } else if millis - self.start > self.len {
             // Do the low cycle of the beep
-            dac.claim(t, |dac, _| dac.set_right_u8(0));
+            (&mut self.dac, &mut self.pin).set(0);
         }
     }
 }
