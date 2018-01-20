@@ -21,13 +21,15 @@ mod board;
 mod radio;
 // mod io;
 mod utils;
+mod output_pin_ext;
 
+use f0::analog_hal::Adc;
+use f0::prelude::*;
+use firmware_common::rfm;
+use output_pin_ext::OutputPinExt;
 use radio::RadioExt;
 use rtfm::Threshold;
 use rtfm::app;
-use f0::gpio::GpioExt;
-use firmware_common::rfm;
-use f0::prelude::*;
 
 /// Drop delay in ms
 const PACKET_DROP_DELAY: u32 = 5000;
@@ -51,12 +53,13 @@ app! {
         static RELAY_CHANNEL_3: board::RelayChannel3;
         static RELAY_CHANNEL_4: board::RelayChannel4;
 
-        // static BATT_MON: Adc = Adc::new(Port::A, 0, 0);
-        // static RELAY_SENSE: Adc = Adc::new(Port::B, 1, 9);
-        // static CONT_CH1: Adc = Adc::new(Port::B, 0, 8);
-        // static CONT_CH2: Adc = Adc::new(Port::A, 7, 7);
-        // static CONT_CH3: Adc = Adc::new(Port::A, 6, 6);
-        // static CONT_CH4: Adc = Adc::new(Port::A, 5, 5);
+        static ADC: f0::analog::Adc<stm32f0xx::ADC>;
+        static BATT_MON: board::BattMon;
+        static RELAY_SENSE: board::RelaySense;
+        static CONT_CH1: board::ContCh1;
+        static CONT_CH2: board::ContCh2;
+        static CONT_CH3: board::ContCh3;
+        static CONT_CH4: board::ContCh4;
 
         static RADIO: board::Radio;
     },
@@ -74,7 +77,7 @@ app! {
                 LAST_PACKET, MILLIS,
                 LED_GREEN, LED_YELLOW, LED_ARM, LED_DISARM,
                 RELAY_UPSTREAM, RELAY_CHANNEL_1, RELAY_CHANNEL_2, RELAY_CHANNEL_3, RELAY_CHANNEL_4,
-                // BATT_MON, RELAY_SENSE, CONT_CH1, CONT_CH2, CONT_CH3, CONT_CH4, // ADCs
+                ADC, BATT_MON, RELAY_SENSE, CONT_CH1, CONT_CH2, CONT_CH3, CONT_CH4, // ADCs
                 RADIO, // Radio
             ],
         },
@@ -102,9 +105,9 @@ fn init(p: init::Peripherals, _r: init::Resources) -> init::LateResources {
     let spi = f0::spi::Spi::spi1(
         p.device.SPI1,
         (
-            gpioa.pa5.into_af5(&mut gpioa.moder, &mut gpioa.afrl),
-            gpioa.pa6.into_af5(&mut gpioa.moder, &mut gpioa.afrl),
-            gpiob.pb5.into_af5(&mut gpiob.moder, &mut gpiob.afrl),
+            gpiob.pb3.into_af0(&mut gpiob.moder, &mut gpiob.afrl),
+            gpiob.pb4.into_af0(&mut gpiob.moder, &mut gpiob.afrl),
+            gpiob.pb5.into_af0(&mut gpiob.moder, &mut gpiob.afrl),
         ),
         embedded_hal::spi::Mode {
             polarity: embedded_hal::spi::Polarity::IdleLow,
@@ -137,6 +140,13 @@ fn init(p: init::Peripherals, _r: init::Resources) -> init::LateResources {
 
     init::LateResources {
         RADIO: radio,
+        ADC: f0::analog::Adc::adc(p.device.ADC),
+        BATT_MON: gpioa.pa0.into_analog(&mut gpioa.moder),
+        RELAY_SENSE: gpiob.pb1.into_analog(&mut gpiob.moder),
+        CONT_CH1: gpiob.pb0.into_analog(&mut gpiob.moder),
+        CONT_CH2: gpioa.pa7.into_analog(&mut gpioa.moder),
+        CONT_CH3: gpioa.pa6.into_analog(&mut gpioa.moder),
+        CONT_CH4: gpioa.pa5.into_analog(&mut gpioa.moder),
         LED_GREEN: gpiob
             .pb13
             .into_push_pull_output(&mut gpiob.moder, &mut gpiob.otyper),
@@ -237,23 +247,23 @@ fn timer_tick(t: &mut rtfm::Threshold, mut r: TIM2_IRQ::Resources) {
             utils::delay_ms(t, &r.MILLIS, 10);
             r.RADIO.transmit_packet(&radio::CfmPacket {
                 received_rssi: rssi,
-                battery_voltage: unimplemented!(), // utils::adc_to_battery_voltage(r.BATT_MON.read(t, &r.ADC)),
+                battery_voltage: utils::adc_to_battery_voltage(
+                    (&mut *r.ADC, &mut *r.BATT_MON).read(),
+                ),
                 armed: packet.armed,
                 fire_ch1: packet.fire_ch1,
                 fire_ch2: packet.fire_ch2,
                 fire_ch3: packet.fire_ch3,
                 fire_ch4: packet.fire_ch4,
-                cont_ch1: unimplemented!(), // utils::adc_to_ohms(r.CONT_CH1.read(t, &r.ADC)),
-                cont_ch2: unimplemented!(), // utils::adc_to_ohms(r.CONT_CH2.read(t, &r.ADC)),
-                cont_ch3: unimplemented!(), // utils::adc_to_ohms(r.CONT_CH3.read(t, &r.ADC)),
-                cont_ch4: unimplemented!(), // utils::adc_to_ohms(r.CONT_CH4.read(t, &r.ADC)),
+                cont_ch1: utils::adc_to_ohms((&mut *r.ADC, &mut *r.CONT_CH1).read()),
+                cont_ch2: utils::adc_to_ohms((&mut *r.ADC, &mut *r.CONT_CH2).read()),
+                cont_ch3: utils::adc_to_ohms((&mut *r.ADC, &mut *r.CONT_CH3).read()),
+                cont_ch4: utils::adc_to_ohms((&mut *r.ADC, &mut *r.CONT_CH4).read()),
             });
             r.RADIO.receive_async(radio::REQ_PACKET_LEN).unwrap();
 
-            // r.GPIOB.claim(t, |gpiob, _t| {
-            // hal::leds::GREEN.toggle(gpiob);
-            // hal::leds::YELLOW.toggle(gpiob);
-            // });
+            r.LED_GREEN.toggle();
+            r.LED_YELLOW.toggle();
         }
         Err(nb::Error::WouldBlock) => {
             if utils::get_millis(t, &r.MILLIS) - *r.LAST_PACKET > PACKET_DROP_DELAY {
