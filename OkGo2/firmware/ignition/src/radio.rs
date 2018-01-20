@@ -1,12 +1,12 @@
 use core::mem;
 
-use md5::Md5;
-use hmac::{Hmac, Mac};
-use firmware_common::key;
-use nb;
-use rfm95w::Rfm95w;
 use embedded_hal::blocking::spi;
 use embedded_hal::digital::OutputPin;
+use firmware_common::key;
+use hmac::{Hmac, Mac};
+use md5::Md5;
+use nb;
+use rfm95w::Rfm95w;
 
 pub const REQ_PACKET_LEN: u8 = 11;
 const CFM_PACKET_LEN: u8 = 17;

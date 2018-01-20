@@ -18,10 +18,9 @@ extern crate stm32f0xx_hal as f0;
 
 mod beeper;
 mod board;
-mod radio;
-// mod io;
-mod utils;
 mod output_pin_ext;
+mod radio;
+mod utils;
 
 use f0::analog_hal::Adc;
 use f0::prelude::*;

@@ -1,6 +1,6 @@
+use f0::gpio;
 use f0::gpio::{Analog, Output, PushPull};
 use f0::gpio::{gpioa, gpiob};
-use f0::gpio;
 use f0::spi::Spi;
 use stm32f0xx::SPI1;
 
