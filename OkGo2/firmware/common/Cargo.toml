@@ -7,6 +7,6 @@ authors = ["david"]
 bitflags = "*"
 hmac = "*"
 md-5 = "*"
+rfm95w = { git = "https://github.com/dtwood/rfm95w" }
 stm32f0xx = { git = "https://github.com/dtwood/stm32f0xx" }
-stm32f0xx-hal = { git = "https://github.com/dtwood/stm32f0xx" }
-rfm95w = { path = "../rfm95w" }
+stm32f0xx-hal = { git = "https://github.com/dtwood/stm32f0xx-hal" }

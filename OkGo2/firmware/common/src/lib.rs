@@ -2,7 +2,6 @@
 #![feature(const_fn)]
 #![no_std]
 
-#[macro_use]
 extern crate bitflags;
 extern crate hmac;
 extern crate md5;

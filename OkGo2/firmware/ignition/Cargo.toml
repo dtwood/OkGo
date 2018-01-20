@@ -15,6 +15,6 @@ firmware_common = { path = "../common" }
 hmac = "*"
 md-5 = "*"
 nb = { git = "https://github.com/japaric/nb.git" }
-rfm95w = { path = "../rfm95w" }
+rfm95w = { git = "https://github.com/dtwood/rfm95w" }
 stm32f0xx = { git = "https://github.com/dtwood/stm32f0xx", features = ["rt"] }
-stm32f0xx-hal = { path = "https://github.com/dtwood/stm32f0xx-hal" }
+stm32f0xx-hal = { git = "https://github.com/dtwood/stm32f0xx-hal" }

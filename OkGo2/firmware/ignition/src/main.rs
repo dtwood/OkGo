@@ -17,10 +17,10 @@ extern crate stm32f0xx;
 extern crate stm32f0xx_hal as f0;
 
 // mod beeper;
+mod board;
 mod radio;
 // mod io;
 mod utils;
-mod hal;
 
 use radio::RadioExt;
 use rtfm::Threshold;
@@ -28,7 +28,6 @@ use rtfm::app;
 use f0::gpio::GpioExt;
 use firmware_common::rfm;
 use f0::prelude::*;
-use hal::{Led, Relay};
 
 /// Drop delay in ms
 const PACKET_DROP_DELAY: u32 = 5000;
@@ -41,16 +40,16 @@ app! {
         static LAST_PACKET: u32 = 0;
         static MILLIS: u32 = 0;
 
-        static LED_GREEN: hal::LedGreen;
-        static LED_YELLOW: hal::LedYellow;
-        static LED_ARM: hal::LedArm;
-        static LED_DISARM: hal::LedDisarm;
+        static LED_GREEN: board::LedGreen;
+        static LED_YELLOW: board::LedYellow;
+        static LED_ARM: board::LedArm;
+        static LED_DISARM: board::LedDisarm;
 
-        static RELAY_UPSTREAM: hal::RelayUpstream;
-        static RELAY_CHANNEL_1: hal::RelayChannel1;
-        static RELAY_CHANNEL_2: hal::RelayChannel2;
-        static RELAY_CHANNEL_3: hal::RelayChannel3;
-        static RELAY_CHANNEL_4: hal::RelayChannel4;
+        static RELAY_UPSTREAM: board::RelayUpstream;
+        static RELAY_CHANNEL_1: board::RelayChannel1;
+        static RELAY_CHANNEL_2: board::RelayChannel2;
+        static RELAY_CHANNEL_3: board::RelayChannel3;
+        static RELAY_CHANNEL_4: board::RelayChannel4;
 
         // static BATT_MON: Adc = Adc::new(Port::A, 0, 0);
         // static RELAY_SENSE: Adc = Adc::new(Port::B, 1, 9);
@@ -59,7 +58,7 @@ app! {
         // static CONT_CH3: Adc = Adc::new(Port::A, 6, 6);
         // static CONT_CH4: Adc = Adc::new(Port::A, 5, 5);
 
-        static RADIO: rfm95w::Rfm95w<f0::spi::Spi<stm32f0xx::SPI1, (f0::gpio::gpioa::PA5<f0::gpio::AF5>, f0::gpio::gpioa::PA6<f0::gpio::AF5>, f0::gpio::gpiob::PB5<f0::gpio::AF5>)>, f0::gpio::gpioa::PA5<f0::gpio::Output<f0::gpio::PushPull>>>;
+        static RADIO: board::Radio;
     },
 
     tasks: {
@@ -86,22 +85,17 @@ app! {
 //
 // This runs first and within a *global* critical section. Nothing can preempt
 // this function.
-fn init(p: init::Peripherals, r: init::Resources) -> init::LateResources {
+fn init(p: init::Peripherals, _r: init::Resources) -> init::LateResources {
     // Setup crystal oscillator and systick
     // unsafe {
-    //     libopencm3_sys::rcc_clock_setup_in_hsi_out_48mhz();
-    //     libopencm3_sys::systick_init();
+    //     libset_highcm3_sys::rcc_clock_setup_in_hsi_out_48mhz();
+    //     libset_highcm3_sys::systick_init();
     // }
 
-    // Clock GPIOs, set pin modes
-    // io::init(&p, &r);
-    //     spi::BaudRate::FpclkDiv64, // Slightly under 1MHz
-    //     spi::Cpol::ClkTo0WhenIdle, // ???
-    //     spi::Cpha::ClkTransition1,
-    //     spi::Crcl::Bit8, // DFF/CRC length
-    //     spi::BitOrder::MsbFirst // MSB first
-
-    let mut ahb = p.device.RCC.constrain().ahb;
+    let mut rcc = p.device.RCC.constrain();
+    let mut flash = p.device.FLASH.constrain();
+    let mut ahb = rcc.ahb;
+    let clocks = rcc.cfgr.freeze(&mut flash.acr);
 
     let mut gpioa = p.device.GPIOA.split(&mut ahb);
     let mut gpiob = p.device.GPIOB.split(&mut ahb);
@@ -112,13 +106,16 @@ fn init(p: init::Peripherals, r: init::Resources) -> init::LateResources {
             gpioa.pa6.into_af5(&mut gpioa.moder, &mut gpioa.afrl),
             gpiob.pb5.into_af5(&mut gpiob.moder, &mut gpiob.afrl),
         ),
-        unimplemented!(),
+        embedded_hal::spi::Mode {
+            polarity: embedded_hal::spi::Polarity::IdleLow,
+            phase: embedded_hal::spi::Phase::CaptureOnFirstTransition,
+        },
         f0::time::MegaHertz(1),
-        unimplemented!(),
-        unimplemented!(),
+        clocks,
+        &mut rcc.apb2,
     );
     let nss = gpioa
-        .pa5
+        .pa15
         .into_push_pull_output(&mut gpioa.moder, &mut gpioa.otyper);
     let mut radio =
         rfm95w::Rfm95w::new(spi, nss, rfm::Frf::Frf868, radio::RADIO_POWER_DBM).unwrap();
@@ -127,7 +124,7 @@ fn init(p: init::Peripherals, r: init::Resources) -> init::LateResources {
 
     // r.BEEPER.init(p.DAC, Port::A, 4);
 
-    // Upstream relay and firing channels, default all off
+    // Upstream relay and firing channels, default all set_low
 
     // /* 48MHz / 8 => 6,000,000 counts per second */
     // systick_set_clocksource(STK_CSR_CLKSOURCE_AHB);
@@ -181,31 +178,31 @@ fn sys_tick(_t: &mut rtfm::Threshold, mut r: SYS_TICK::Resources) {
 }
 
 fn fire(r: &mut TIM2_IRQ::Resources, fire_1: bool, fire_2: bool, fire_3: bool, fire_4: bool) {
-    r.LED_DISARM.off();
-    r.LED_ARM.on();
+    r.LED_DISARM.set_low();
+    r.LED_ARM.set_high();
     if fire_1 {
-        r.RELAY_CHANNEL_1.close()
+        r.RELAY_CHANNEL_1.set_low()
     };
     if fire_2 {
-        r.RELAY_CHANNEL_2.close()
+        r.RELAY_CHANNEL_2.set_low()
     };
     if fire_3 {
-        r.RELAY_CHANNEL_3.close()
+        r.RELAY_CHANNEL_3.set_low()
     };
     if fire_4 {
-        r.RELAY_CHANNEL_4.close()
+        r.RELAY_CHANNEL_4.set_low()
     };
-    r.RELAY_UPSTREAM.close();
+    r.RELAY_UPSTREAM.set_low();
 }
 
 fn disarm(r: &mut TIM2_IRQ::Resources) {
-    r.RELAY_CHANNEL_1.open();
-    r.RELAY_CHANNEL_2.open();
-    r.RELAY_CHANNEL_3.open();
-    r.RELAY_CHANNEL_4.open();
-    r.RELAY_UPSTREAM.open();
-    r.LED_ARM.off();
-    r.LED_DISARM.on();
+    r.RELAY_CHANNEL_1.set_high();
+    r.RELAY_CHANNEL_2.set_high();
+    r.RELAY_CHANNEL_3.set_high();
+    r.RELAY_CHANNEL_4.set_high();
+    r.RELAY_UPSTREAM.set_high();
+    r.LED_ARM.set_low();
+    r.LED_DISARM.set_high();
 }
 
 fn timer_tick(t: &mut rtfm::Threshold, mut r: TIM2_IRQ::Resources) {
